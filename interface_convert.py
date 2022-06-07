@@ -20,7 +20,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
     tu_spelling = []
     tu_location = []
     tu_kind = []
-    tu_acces_specifier = []
+    tu_access_specifier = []
 
     interface_open_bracket = 0
     struct_open_bracket = 0
@@ -34,8 +34,6 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
     within_struct_part = 0
     j = 0
 
-
-
     method_args_content_string = ""
 
     for i in tu.get_tokens(extent=tu.cursor.extent):
@@ -43,32 +41,17 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
         tu_spelling.append(i.spelling)
         tu_location.append(i.location)
         tu_kind.append(i.kind)
-        tu_acces_specifier.append(i.cursor.access_specifier)
-        #for i in range(len(tu_kind)):
-        #    print(tu_kind[i])
-        #print(i.cursor.kind.is_reference())
-        #ref_node = clang.cindex.Cursor_ref(i.cursor)
-        #print(ref_node.spelling)
-        #print(i.spelling)
-        #print(i.cursor.kind)
-        #print(i.cursor.displayname)
-        #print(i.cursor.extent)
-        #print(i.cursor.location)
-        #print(i.location)
-        #print("")
-    #tu_spelling.append("")
-    #tu_location.append("")
-    #tu_kind.append("")
+        tu_access_specifier.append(i.cursor.access_specifier)
 
 
     for i in tu.get_tokens(extent=tu.cursor.extent):
 
-# ----- Interfaces ------------------------------------------------------------------
+        # ----- Interfaces ------------------------------------------------------------------
 
         if tu_spelling[j - 1] != ">" and tu_spelling[j] == "class" and within_interface == 0 and\
                 ((tu_spelling[j + 2] == ":" and tu_spelling[j + 3] == "public") or tu_spelling[j + 1] == "FUnknown")\
                 and i.cursor.kind == i.cursor.kind.CLASS_DECL and within_interface == 0\
-                and tu_acces_specifier[j + 3] == i.cursor.access_specifier.PUBLIC:
+                and tu_access_specifier[j + 3] == i.cursor.access_specifier.PUBLIC:
             interface_count = interface_count + 1
             within_interface = 1
 
@@ -95,7 +78,6 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
 
 
         elif tu_spelling[j] == "public" and tu_spelling[j + 1] != ":" and within_interface == 1:
-            inherits_location = 0
             for k in range(len(inherits_table[interface_count - 1]) + 1):
                 if tu_spelling[j + 1] in interface_name:
                     inherits_location = interface_name.index(tu_spelling[j + 1])
@@ -154,7 +136,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
                 method_args_content.append(tu_spelling[j + 1])
 
 
-# ----- Structs ------------------------------------------------------------------
+        # ----- Structs ------------------------------------------------------------------
 
         if tu_spelling[j] == "struct" and tu_spelling[j + 2] == "{" and within_struct == 0:
             within_struct = 1
@@ -194,7 +176,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
                 within_struct = 0
 
 
-# ----- Enums ------------------------------------------------------------------
+        # ----- Enums ------------------------------------------------------------------
 
         if tu_spelling[j] == "enum" and (tu_spelling[j + 1] == "{" or tu_spelling[j + 2] == "{") and within_enum == 0:
             within_enum = 1
@@ -223,20 +205,11 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
                     enum_table.append(temp)
 
 
-# ----- ID ------------------------------------------------------------------
+        # ----- ID ------------------------------------------------------------------
 
         if tu_spelling[j] == "DECLARE_CLASS_IID" and tu_spelling[j - 1] != "define":
             for k in range(4):
                 ID_table[interface_count - 1].append(tu_spelling[j + 2 * k + 4])
-
-        #print(tu_spelling[j])
-        #print(tu_location[j])
-        #print("within_struct: ", within_struct)
-        #print("within_struct_part: ", within_struct_part)
-        #print("struct_open_bracket: ", struct_open_bracket)
-        #print("within_enum: ", within_enum)
-        #print("enum_open_bracket: ", enum_open_bracket)
-        #print(" ")
 
         j = j + 1
 
@@ -251,8 +224,10 @@ def convert(source):
         source = enum_table[enum_table.index(source) + 1]
     elif source in SMTG_table or source in SMTG_table_ptr or source in struct_table:
         source = "SMTG_{}".format(source)
-    elif source in _t_table or source in _t_table_ptr:
+    elif source in _t_table:
         source = "{}_t".format(source)
+    elif source in _t_table_ptr:
+        source = "{}_t*".format(_t_table[_t_table_ptr.index(source)])
     elif source in SMTG_TUID_table or source in SMTG_TUID_table_ptr:
         source = "SMTG_TUID"
     elif source == "_iid":
@@ -308,7 +283,7 @@ def print_interface():
         print("// ------------------------------------------------------------------------")
         print("// Steinberg::{}".format(interface_name[i]))
         if not only_print_current_header:
-            print("// source: \"{}\"".format(source_file_interface[i]))
+            print("// Source: \"{}\"".format(source_file_interface[i]))
         print("// ------------------------------------------------------------------------\n")
         print("typedef struct SMTG_{}Vtbl".format(interface_name[i]))
         print("{")
@@ -325,7 +300,7 @@ def print_interface():
                                                                                  ID_table[i][3]))
         print()
 
-def print_standard(source_file):
+def print_standard():
     print("#include <stdint.h>\n")
     print("#define SMTG_STDMETHODCALLTYPE\n")
     print("#define SMTG_FUNKNOWN_C_GUTS \\")
@@ -362,20 +337,21 @@ def print_standard(source_file):
     print("typedef uint_least16_t SMTG_char16;")
     print("typedef uint8_t SMTG_char8;\n")
     print("//------------------------------------------------------------------------")
-    print("// pluginterfaces/base/{}".format(source_file))
+    print("// {}".format(source_file))
     print("//------------------------------------------------------------------------")
     print("")
 
 
 def print_conversion():
-    print_standard(source_file)
+    print_standard()
     print_structs()
     print_interface()
 
 
 def print_info():
     for i in range(interface_count_includes, interface_count):
-        print("Interface", i + 1 - interface_count_includes, ":", interface_name[i])
+        print("Interface {}: {}".format(i + 1 - interface_count_includes, interface_name[i]))
+        print("Source file: {}".format(source_file_interface[i]))
         print(interface_description[i])
         print("IID: {}, {}, {}, {}".format(ID_table[i][0], ID_table[i][1], ID_table[i][2], ID_table[i][3]))
         print("Inherits:")
@@ -429,7 +405,7 @@ if __name__ == '__main__':
     data_types = ["int32", "char8", "char16", "TUID", "uint32", "ParamID", "String128", "ParamValue", "UnitID"]
     remove_table = ["/*out*/", "/*in*/"]
     SMTG_table = ["tresult", "FUnknown", "char8", "char16", "IBStream", "ParamID", "ParamValue"]
-    _t_table = ["int8", "int16", "int32", "uint8", "uint16", "uint32"]
+    _t_table = ["int8", "int16", "int32", "int64", "int128", "uint8", "uint16", "uint32", "uint64", "uint128"]
     SMTG_TUID_table = ["FIDString", "TUID"]
     SMTG_table_ptr = []
     _t_table_ptr = []
@@ -471,4 +447,4 @@ if __name__ == '__main__':
 
     print_conversion()
     print_info()
-    #print(includes_list)
+    #print(convert("int32*"))
