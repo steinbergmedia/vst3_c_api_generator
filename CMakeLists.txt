@@ -19,8 +19,16 @@ find_package (Python3)
 project(GeneratorTest)
 add_executable(GeneratorTest main.cpp)
 
+#execute_process(COMMAND py -m pip install --upgrade pip)
+
+execute_process(COMMAND py -m venv ${CMAKE_CURRENT_SOURCE_DIR}/build/venv)
+
+execute_process(COMMAND venv/Scripts/python.exe -m pip install libclang)
+execute_process(COMMAND venv/Scripts/python.exe -m pip install clang)
+execute_process(COMMAND venv/Scripts/python.exe -m pip install wheel)
+
 add_custom_command(TARGET GeneratorTest
                     PRE_BUILD
-                    COMMAND "${Python3_EXECUTABLE}" ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py header_compilation.h
+                    #WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/_deps/pluginterfaces-src/base
+                    COMMAND venv/Scripts/python.exe ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py header_compilation.h
                     )
-

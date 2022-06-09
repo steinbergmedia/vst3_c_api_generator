@@ -11,9 +11,14 @@
 """
 A tool for converting c++-interfaces into a c-based version
 """
+import sys
+from pathlib import Path
 
 import clang.cindex
+from clang.cindex import Config
 from optparse import OptionParser
+script_path = Path(sys.argv[0]).parent
+Config.set_library_path("{}/build/venv/Lib/site-packages/clang/native".format(script_path))
 
 def parsing(tu, method_count, struct_count, interface_count, method_args, method_args_content):
 
@@ -375,7 +380,7 @@ def print_info():
 
 if __name__ == '__main__':
 
-    only_print_current_header = False
+    only_print_current_header = True
 
     parser = OptionParser("usage: {filename} [clang-args*]")
     (opts, filename) = parser.parse_args()
