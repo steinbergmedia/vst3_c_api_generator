@@ -11,14 +11,17 @@
 """
 A tool for converting c++-interfaces into a c-based version
 """
+
 import sys
 from pathlib import Path
-
 import clang.cindex
 from clang.cindex import Config
 from optparse import OptionParser
+
 script_path = Path(sys.argv[0]).parent
 Config.set_library_path("{}/build/venv/Lib/site-packages/clang/native".format(script_path))
+
+#C:\Projekt3\toolchain_c_interface\build\_deps\pluginterfaces-src\base
 
 def parsing(tu, method_count, struct_count, interface_count, method_args, method_args_content):
 
@@ -55,8 +58,8 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
 
         if tu_spelling[j - 1] != ">" and tu_spelling[j] == "class" and within_interface == 0 and\
                 ((tu_spelling[j + 2] == ":" and tu_spelling[j + 3] == "public") or tu_spelling[j + 1] == "FUnknown")\
-                and i.cursor.kind == i.cursor.kind.CLASS_DECL and within_interface == 0\
-                and tu_access_specifier[j + 3] == i.cursor.access_specifier.PUBLIC:
+                and i.cursor.kind == i.cursor.kind.CLASS_DECL and within_interface == 0 \
+                    and (tu_access_specifier[j] == i.cursor.access_specifier.PUBLIC or tu_access_specifier[j + 3] == i.cursor.access_specifier.PUBLIC):
             interface_count = interface_count + 1
             within_interface = 1
 
@@ -155,7 +158,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
             struct_open_bracket = struct_open_bracket + 1
 
         elif tu_spelling[j] == "//------------------------------------------------------------------------"\
-                and within_struct == 1 and within_struct_part == 0 and tu_spelling[j + 1] in data_types:
+                and within_struct == 1 and within_struct_part == 0 and (tu_spelling[j + 1] in data_types or tu_spelling[j + 2] in data_types):
             within_struct_part = 1
 
         elif tu_spelling[j] == ("//------------------------------------------------------------------------"
@@ -215,6 +218,15 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
         if tu_spelling[j] == "DECLARE_CLASS_IID" and tu_spelling[j - 1] != "define":
             for k in range(4):
                 ID_table[interface_count - 1].append(tu_spelling[j + 2 * k + 4])
+
+        #print(tu_spelling[j])
+        #print(tu_location[j])
+        #print("within_struct: ", within_struct)
+        #print("within_struct_part: ", within_struct_part)
+        #print("struct_open_bracket: ", struct_open_bracket)
+        #print("within_enum: ", within_enum)
+        #print("enum_open_bracket: ", enum_open_bracket)
+        #print(" ")
 
         j = j + 1
 
@@ -380,13 +392,17 @@ def print_info():
 
 if __name__ == '__main__':
 
-    only_print_current_header = True
+    only_print_current_header = False
 
     parser = OptionParser("usage: {filename} [clang-args*]")
     (opts, filename) = parser.parse_args()
 
     index = clang.cindex.Index.create()
-    tu = index.parse(filename[0], args = ['-I../../', '-x', 'c++-header'])
+
+    include_path = Path(sys.argv[1]).parents[2]
+    print(include_path)
+
+    tu = index.parse(filename[0], ['-I', str(include_path), '-x', 'c++-header'])
 
     source_file = tu.spelling
 
@@ -428,6 +444,8 @@ if __name__ == '__main__':
     interface_count = 0
     interface_count_includes = 0
 
+    l = 0
+
     tu_table.append(tu)
 
     for j in tu_table[0].get_includes():
@@ -435,8 +453,9 @@ if __name__ == '__main__':
         path = str(path)
         if "C:\Program Files" not in path and path not in includes_list:
             #print("Path:", path)
-            tu_table.append(index.parse(path, args = ['-I../../', '-x', 'c++-header']))
+            tu_table.append(index.parse(path, ['-I', str(include_path), '-x', 'c++-header']))
             includes_list.append(path)
+            l = l + 1
 
     if only_print_current_header:
         tu_table.reverse()
@@ -452,4 +471,6 @@ if __name__ == '__main__':
 
     print_conversion()
     print_info()
-    #print(convert("int32*"))
+    #for i in range(interface_count_includes, interface_count):
+    #    print("Interface {}: {}".format(i + 1 - interface_count_includes, interface_name[i]))
+    #    print("Source file: {}".format(source_file_interface[i]))

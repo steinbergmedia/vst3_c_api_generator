@@ -30,5 +30,5 @@ execute_process(COMMAND venv/Scripts/python.exe -m pip install wheel)
 add_custom_command(TARGET GeneratorTest
                     PRE_BUILD
                     #WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/_deps/pluginterfaces-src/base
-                    COMMAND venv/Scripts/python.exe ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py header_compilation.h
+                    COMMAND venv/Scripts/python.exe ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py ${CMAKE_CURRENT_SOURCE_DIR}/build/_deps/pluginterfaces-src/vst/header_compilation.h
                     )
