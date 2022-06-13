@@ -1,8 +1,7 @@
 taskkill /F /IM pycharm64.exe /T
 taskkill /F /IM devenv.exe /T
 ::taskkill /F /IM devenv.exe /T
-timeout/t 3
-if exist test_header.h del /F test_header.h
+timeout/t 5
 rmdir /Q /S build
 mkdir build
 cd build

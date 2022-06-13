@@ -14,24 +14,24 @@ if(NOT pluginterfaces_POPULATED)
 endif()
 
 find_package (Python3)
-#execute_process(COMMAND "${Python3_EXECUTABLE}" interface_convert.py header_compilation.h)
 
 project(GeneratorTest)
 add_executable(GeneratorTest main.cpp)
+target_include_directories(GeneratorTest PRIVATE ${CMAKE_BINARY_DIR})
 
-#execute_process(COMMAND py -m pip install --upgrade pip)
+execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${CMAKE_CURRENT_SOURCE_DIR}/build/venv)
 
-execute_process(COMMAND py -m venv ${CMAKE_CURRENT_SOURCE_DIR}/build/venv)
+execute_process(COMMAND venv/Scripts/python.exe -m pip install --upgrade pip)
 
 execute_process(COMMAND venv/Scripts/python.exe -m pip install libclang)
 execute_process(COMMAND venv/Scripts/python.exe -m pip install clang)
 execute_process(COMMAND venv/Scripts/python.exe -m pip install wheel)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/header_compilation.h
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/build/_deps/pluginterfaces-src/vst)
+        DESTINATION ${CMAKE_BINARY_DIR}/_deps/pluginterfaces-src/vst)
 
 add_custom_command(TARGET GeneratorTest
                     PRE_BUILD
-                    #WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/_deps/pluginterfaces-src/base
-                    COMMAND venv/Scripts/python.exe ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py ${CMAKE_CURRENT_SOURCE_DIR}/build/_deps/pluginterfaces-src/vst/header_compilation.h
+                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+                    COMMAND venv/Scripts/python.exe ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces-src/vst/header_compilation.h
                     )

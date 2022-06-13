@@ -1,5 +1,4 @@
 # Default ignored files
 /build/
 /venv/
-rebuild.bat
-test_header.h
+z_rebuild.bat
