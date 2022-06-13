@@ -27,6 +27,9 @@ execute_process(COMMAND venv/Scripts/python.exe -m pip install libclang)
 execute_process(COMMAND venv/Scripts/python.exe -m pip install clang)
 execute_process(COMMAND venv/Scripts/python.exe -m pip install wheel)
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/header_compilation.h
+        DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/build/_deps/pluginterfaces-src/vst/header_compilation.h
+
 add_custom_command(TARGET GeneratorTest
                     PRE_BUILD
                     #WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/_deps/pluginterfaces-src/base

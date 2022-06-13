@@ -356,14 +356,7 @@ def print_standard():
     print("//------------------------------------------------------------------------")
     print("// {}".format(source_file))
     print("//------------------------------------------------------------------------")
-    print("")
-
-
-def print_conversion():
-    print_standard()
-    print_structs()
-    print_interface()
-
+    print()
 
 def print_info():
     for i in range(interface_count_includes, interface_count):
@@ -382,7 +375,152 @@ def print_info():
         for j in range(method_count):
             if j < len(method_name[i]):
                 print(method_name[i][j])
-        print("\r")
+        print()
+
+def print_conversion():
+    print_standard()
+    print_structs()
+    print_interface()
+
+
+def write_structs():
+    for i in range(struct_count_includes, struct_count):
+        h.write("//------------------------------------------------------------------------\r")
+        if not only_print_current_header:
+            h.write("// source: \"{}\"\r".format(source_file_struct[i]))
+        h.write("\r")
+        h.write("struct SMTG_{} {}\r".format(struct_table[i], "{"))
+        for j in range(len(struct_content[i])):
+            h.write("    {}\r".format(struct_content[i][j]))
+        h.write("};\r")
+        h.write("\r")
+
+
+def write_methods(i):
+    methods_location = 0
+    for k in range(len(inherits_table[i])):
+        if inherits_table[i][k] in interface_name:
+            methods_location = interface_name.index(inherits_table[i][k])
+        h.write("    // methods derived from \"{}\":\r".format(inherits_table[i][k]))
+        for j in range(len(method_name[methods_location])):
+            if method_args[methods_location][j][0] == "":
+                h.write("    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\r".format(method_return[methods_location][j],
+                                                                                         method_name[methods_location][j]))
+            elif method_args[methods_location][j][0] != "":
+
+                h.write("    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});\r".format(method_return[methods_location][j],
+                                                                                             method_name[methods_location][j],
+                                                                                             method_args[methods_location][j][0]))
+        h.write("\r")
+    h.write("    // methods defined in \"{}\":\r".format(interface_name[i]))
+    for j in range(len(method_name[i])):
+        if method_args[i][j][0] == "":
+            h.write("    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\r".format(method_return[i][j],
+                                                                                           method_name[i][j]))
+        elif method_args[i][j][0] != "":
+            h.write("    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});\r".format(method_return[i][j],
+                                                                                                   method_name[i][j],
+                                                                                                   method_args[i][j][0]))
+    h.write("\r")
+
+
+def write_interface():
+    for i in range(interface_count_includes, interface_count):
+        h.write("// ------------------------------------------------------------------------\r")
+        h.write("// Steinberg::{}\r".format(interface_name[i]))
+        if not only_print_current_header:
+            h.write("// Source: \"{}\"\r".format(source_file_interface[i]))
+        h.write("// ------------------------------------------------------------------------\n")
+        h.write("\r")
+        h.write("typedef struct SMTG_{}Vtbl\r".format(interface_name[i]))
+        h.write("{\r")
+        write_methods(i)
+        h.write("}} SMTG_{}Vtbl;\n".format(interface_name[i]))
+        h.write("\r")
+        h.write("typedef struct SMTG_{}\r".format(interface_name[i]))
+        h.write("{\r")
+        h.write("    SMTG_{}Vtbl* lpVtbl;\r".format(interface_name[i]))
+        h.write("}} SMTG_{};\n".format(interface_name[i]))
+        h.write("\r")
+        h.write("SMTG_TUID SMTG_{}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\r".format(interface_name[i],
+                                                                                 ID_table[i][0],
+                                                                                 ID_table[i][1],
+                                                                                 ID_table[i][2],
+                                                                                 ID_table[i][3]))
+        h.write("\r")
+
+def write_standard():
+    h.write("#include <stdint.h>\n")
+    h.write("\r")
+    h.write("#define SMTG_STDMETHODCALLTYPE\n")
+    h.write("\r")
+    h.write("#define SMTG_FUNKNOWN_C_GUTS \\\r")
+    h.write("    SMTG_tresult (SMTG_STDMETHODCALLTYPE *queryInterface)(void* thisPointer, SMTG_TUID iid, void** ppv); \\\r")
+    h.write("    uint32_t (SMTG_STDMETHODCALLTYPE *addRef)(void* thisPointer); \\\r")
+    h.write("    uint32_t (SMTG_STDMETHODCALLTYPE *release)(void* thisPointer) \\\n")
+    h.write("\r")
+    h.write("#if _WIN32 // COM_COMPATIBLE\r")
+    h.write("#define SMTG_INLINE_UID(l1, l2, l3, l4) \\\r")
+    h.write("{ \\\r")
+    h.write("	(int8_t)(((uint32_t)(l1) & 0x000000FF)      ), (int8_t)(((uint32_t)(l1) & 0x0000FF00) >>  8), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l1) & 0x00FF0000) >> 16), (int8_t)(((uint32_t)(l1) & 0xFF000000) >> 24), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l2) & 0x00FF0000) >> 16), (int8_t)(((uint32_t)(l2) & 0xFF000000) >> 24), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l2) & 0x000000FF)      ), (int8_t)(((uint32_t)(l2) & 0x0000FF00) >>  8), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l3) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l3) & 0x00FF0000) >> 16), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l3) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l3) & 0x000000FF)      ), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l4) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l4) & 0x00FF0000) >> 16), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l4) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l4) & 0x000000FF)      )  \\\r")
+    h.write("}\r")
+    h.write("#else\r")
+    h.write("#define SMTG_INLINE_UID(l1, l2, l3, l4) \\\r")
+    h.write("{ \\\r")
+    h.write("	(int8_t)(((uint32_t)(l1) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l1) & 0x00FF0000) >> 16), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l1) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l1) & 0x000000FF)      ), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l2) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l2) & 0x00FF0000) >> 16), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l2) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l2) & 0x000000FF)      ), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l3) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l3) & 0x00FF0000) >> 16), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l3) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l3) & 0x000000FF)      ), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l4) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l4) & 0x00FF0000) >> 16), \\\r")
+    h.write("	(int8_t)(((uint32_t)(l4) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l4) & 0x000000FF)      )  \\\r")
+    h.write("}\r")
+    h.write("#endif\n")
+    h.write("\r")
+    h.write("typedef uint8_t SMTG_TUID[16];\r")
+    h.write("typedef int32_t SMTG_tresult;\r")
+    h.write("typedef uint_least16_t SMTG_char16;\r")
+    h.write("typedef uint8_t SMTG_char8;\n")
+    h.write("\r")
+    h.write("//------------------------------------------------------------------------\r")
+    h.write("// {}\r".format(source_file))
+    h.write("//------------------------------------------------------------------------\r")
+    h.write("\r")
+
+def write_info():
+    for i in range(interface_count_includes, interface_count):
+        h.write("Interface {}: {}\r".format(i + 1 - interface_count_includes, interface_name[i]))
+        h.write("Source file: {}\r".format(source_file_interface[i]))
+        h.write(interface_description[i])
+        h.write("\r")
+        h.write("IID: {}, {}, {}, {}\r".format(ID_table[i][0], ID_table[i][1], ID_table[i][2], ID_table[i][3]))
+        h.write("Inherits:")
+        for j in range(len(inherits_table[i])):
+            h.write(inherits_table[i][j])
+            h.write("\r")
+        h.write("Token Location: {} - {}\r".format(int(interface_token_location[2 * i]),
+              int(interface_token_location[2 * i + 1])))
+        h.write("Start: {}\r".format(interface_location[2 * i]))
+        h.write("End: {}\r".format(interface_location[2 * i + 1]))
+        h.write("Methods found: {}\r".format(len(method_name[i])))
+        for j in range(method_count):
+            if j < len(method_name[i]):
+                h.write(method_name[i][j])
+                h.write("\r")
+        h.write("\r")
+
+def write_conversion():
+    write_standard()
+    write_structs()
+    write_interface()
 
 
 
@@ -393,6 +531,9 @@ def print_info():
 if __name__ == '__main__':
 
     only_print_current_header = False
+    print_header = True
+    write_header = True
+
 
     parser = OptionParser("usage: {filename} [clang-args*]")
     (opts, filename) = parser.parse_args()
@@ -452,7 +593,7 @@ if __name__ == '__main__':
         path = j.include
         path = str(path)
         if "C:\Program Files" not in path and path not in includes_list:
-            #print("Path:", path)
+            print("Path:", path)
             tu_table.append(index.parse(path, ['-I', str(include_path), '-x', 'c++-header']))
             includes_list.append(path)
             l = l + 1
@@ -468,9 +609,10 @@ if __name__ == '__main__':
         struct_table, struct_content, inherits_table, ID_table, enum_table, data_types, source_file, source_file_interface,\
         source_file_struct = parsing(i, method_count, struct_count, interface_count, method_args, method_args_content)
 
-
-    print_conversion()
-    print_info()
-    #for i in range(interface_count_includes, interface_count):
-    #    print("Interface {}: {}".format(i + 1 - interface_count_includes, interface_name[i]))
-    #    print("Source file: {}".format(source_file_interface[i]))
+    if (print_header):
+        print_conversion()
+        print_info()
+    header_path = "{}/test_header.h".format(script_path)
+    if (write_header):
+        with open(header_path, 'w') as h:
+            write_conversion()

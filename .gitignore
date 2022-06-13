@@ -2,3 +2,4 @@
 /build/
 /venv/
 rebuild.bat
+test_header.h
