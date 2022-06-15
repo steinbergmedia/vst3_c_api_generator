@@ -38,6 +38,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
     within_enum = 0
     within_struct = 0
     within_struct_part = 0
+    struct_over = 0
     j = 0
 
     method_args_content_string = ""
@@ -157,15 +158,15 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
         elif tu_spelling[j] == "{" and within_struct == 1:
             struct_open_bracket = struct_open_bracket + 1
 
-        elif tu_spelling[j] == "//------------------------------------------------------------------------"\
-                and within_struct == 1 and within_struct_part == 0 and (tu_spelling[j + 1] in data_types or tu_spelling[j + 2] in data_types):
+        elif within_struct == 1 and within_struct_part == 0 and within_enum == 0 and (tu_spelling[j] in data_types
+            and struct_over != 1 and i.cursor.kind != i.cursor.kind.PARM_DECL and i.cursor.kind != i.cursor.kind.CXX_METHOD):
             within_struct_part = 1
 
-        elif tu_spelling[j] == ("//------------------------------------------------------------------------"
-                or tu_spelling[j] == "SMTG_CONSTEXPR14") and within_struct_part == 1 and within_struct == 1:
+        elif tu_spelling[j] == "SMTG_CONSTEXPR14" and within_struct_part == 1 and within_struct == 1:
             within_struct_part = 0
+            struct_over = 1
 
-        elif tu_spelling[j] in data_types and tu_spelling[j] != "*" and within_struct == 1 and within_struct_part == 1:
+        if tu_spelling[j] in data_types and within_struct == 1 and within_struct_part == 1 and within_enum == 0 and struct_over != 1 and struct_open_bracket < 2:
             temp = ""
             for k in range(100):
                 if tu_spelling[j + k] != ":" and tu_spelling[j + k + 1] != ":":
@@ -182,12 +183,14 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
             struct_open_bracket = struct_open_bracket - 1
             if struct_open_bracket == 0:
                 within_struct = 0
+                struct_over = 0
 
 
         # ----- Enums ------------------------------------------------------------------
 
         if tu_spelling[j] == "enum" and (tu_spelling[j + 1] == "{" or tu_spelling[j + 2] == "{") and within_enum == 0:
             within_enum = 1
+            within_struct_part = 0
 
         elif tu_spelling[j] == "{" and within_enum == 1:
             enum_open_bracket = enum_open_bracket + 1
@@ -239,7 +242,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
 def convert(source):
     if source in enum_table:
         source = enum_table[enum_table.index(source) + 1]
-    elif source in SMTG_table or source in SMTG_table_ptr or source in struct_table:
+    elif source in SMTG_table or source in SMTG_table_ptr or source in struct_table or source in interface_name:
         source = "SMTG_{}".format(source)
     elif source in _t_table:
         source = "{}_t".format(source)
@@ -320,10 +323,6 @@ def print_interface():
 def print_standard():
     print("#include <stdint.h>\n")
     print("#define SMTG_STDMETHODCALLTYPE\n")
-    print("#define SMTG_FUNKNOWN_C_GUTS \\")
-    print("    SMTG_tresult (SMTG_STDMETHODCALLTYPE *queryInterface)(void* thisPointer, SMTG_TUID iid, void** ppv); \\")
-    print("    uint32_t (SMTG_STDMETHODCALLTYPE *addRef)(void* thisPointer); \\")
-    print("    uint32_t (SMTG_STDMETHODCALLTYPE *release)(void* thisPointer) \\\n")
     print("#if _WIN32 // COM_COMPATIBLE")
     print("#define SMTG_INLINE_UID(l1, l2, l3, l4) \\")
     print("{ \\")
@@ -491,6 +490,7 @@ def write_standard():
     h.write("\n")
 
 def write_info():
+    h.write("/*------------------------------------------------------------------------\n")
     for i in range(interface_count_includes, interface_count):
         h.write("Interface {}: {}\n".format(i + 1 - interface_count_includes, interface_name[i]))
         h.write("Source file: {}\n".format(source_file_interface[i]))
@@ -511,6 +511,7 @@ def write_info():
                 h.write(method_name[i][j])
                 h.write("\n")
         h.write("\n")
+    h.write("------------------------------------------------------------------------*/\n")
 
 def write_conversion():
     write_standard()
@@ -527,7 +528,7 @@ if __name__ == '__main__':
 
     only_print_current_header = False
     print_header = True
-    write_header = True
+    write_header = False
 
 
     parser = OptionParser("usage: {filename} [clang-args*]")
@@ -607,8 +608,12 @@ if __name__ == '__main__':
     if (print_header):
         print_conversion()
         print_info()
+        print(interface_name)
+        for i in tu_table:
+            print(i.spelling)
 
     if (write_header):
         header_path = "test_header.h"
         with open(header_path, 'w') as h:
             write_conversion()
+            write_info()
