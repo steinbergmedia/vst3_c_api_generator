@@ -258,10 +258,9 @@ def convert(source):
 
 
 def print_structs():
-    for i in range(struct_count_includes, struct_count):
+    for i in range(struct_count):
         print("//------------------------------------------------------------------------")
-        if not only_print_current_header:
-            print("// source: \"{}\"".format(source_file_struct[i]))
+        print("// source: \"{}\"".format(source_file_struct[i]))
         print()
         print("struct SMTG_{} {}".format(struct_table[i], "{"))
         for j in range(len(struct_content[i])):
@@ -299,11 +298,10 @@ def print_methods(i):
 
 
 def print_interface():
-    for i in range(interface_count_includes, interface_count):
+    for i in range(interface_count):
         print("// ------------------------------------------------------------------------")
         print("// Steinberg::{}".format(interface_name[i]))
-        if not only_print_current_header:
-            print("// Source: \"{}\"".format(source_file_interface[i]))
+        print("// Source: \"{}\"".format(source_file_interface[i]))
         print("// ------------------------------------------------------------------------\n")
         print("typedef struct SMTG_{}Vtbl".format(interface_name[i]))
         print("{")
@@ -358,8 +356,8 @@ def print_standard():
     print()
 
 def print_info():
-    for i in range(interface_count_includes, interface_count):
-        print("Interface {}: {}".format(i + 1 - interface_count_includes, interface_name[i]))
+    for i in range(interface_count):
+        print("Interface {}: {}".format(i + 1, interface_name[i]))
         print("Source file: {}".format(source_file_interface[i]))
         print(interface_description[i])
         print("IID: {}, {}, {}, {}".format(ID_table[i][0], ID_table[i][1], ID_table[i][2], ID_table[i][3]))
@@ -383,10 +381,9 @@ def print_conversion():
 
 
 def write_structs():
-    for i in range(struct_count_includes, struct_count):
+    for i in range(struct_count):
         h.write("/*------------------------------------------------------------------------\n")
-        if not only_print_current_header:
-            h.write("source: \"{}\" */\n".format(source_file_struct[i]))
+        h.write("source: \"{}\" */\n".format(source_file_struct[i]))
         h.write("\n")
         h.write("struct SMTG_{} {}\n".format(struct_table[i], "{"))
         for j in range(len(struct_content[i])):
@@ -424,11 +421,10 @@ def write_methods(i):
 
 
 def write_interface():
-    for i in range(interface_count_includes, interface_count):
+    for i in range(interface_count):
         h.write("/*------------------------------------------------------------------------\n")
         h.write("Steinberg::{}\n".format(interface_name[i]))
-        if not only_print_current_header:
-            h.write("Source: \"{}\"\n".format(source_file_interface[i]))
+        h.write("Source: \"{}\"\n".format(source_file_interface[i]))
         h.write("------------------------------------------------------------------------*/\n")
         h.write("\n")
         h.write("typedef struct SMTG_{}Vtbl\n".format(interface_name[i]))
@@ -491,8 +487,8 @@ def write_standard():
 
 def write_info():
     h.write("/*------------------------------------------------------------------------\n")
-    for i in range(interface_count_includes, interface_count):
-        h.write("Interface {}: {}\n".format(i + 1 - interface_count_includes, interface_name[i]))
+    for i in range(interface_count):
+        h.write("Interface {}: {}\n".format(i + 1, interface_name[i]))
         h.write("Source file: {}\n".format(source_file_interface[i]))
         h.write(interface_description[i])
         h.write("\n")
@@ -518,6 +514,22 @@ def write_conversion():
     write_structs()
     write_interface()
 
+def normalise_link(path):
+    path = str(path)
+    path = list(path)
+    for i in range(len(path)):
+        path[i] = convert_link(path[i])
+    path = "".join(path)
+    return path
+
+def convert_link(source):
+    if "/" in source:
+        source = "\\"
+    return source
+
+
+
+
 
 
 
@@ -526,7 +538,6 @@ def write_conversion():
 
 if __name__ == '__main__':
 
-    only_print_current_header = False
     print_header = True
     write_header = False
 
@@ -557,7 +568,9 @@ if __name__ == '__main__':
     inherits_table = []
     ID_table = []
     enum_table = []
+    tu_table_temp = []
     tu_table = []
+    tu_table_spelling = []
     source_file_interface = []
     source_file_struct = []
     data_types = ["int32", "char8", "char16", "TUID", "uint32", "ParamID", "String128", "ParamValue", "UnitID"]
@@ -577,29 +590,48 @@ if __name__ == '__main__':
 
     method_count = 0
     struct_count = 0
-    struct_count_includes = 0
     interface_count = 0
-    interface_count_includes = 0
-
+    includes_found = 0
+    includes_found2 = 0
+    includes_found3 = 0
+    includes_found4 = 0
+    includes_found5 = 0
     l = 0
 
-    tu_table.append(tu)
-
-    for j in tu_table[0].get_includes():
-        path = j.include
-        path = str(path)
-        if "_deps" in path and path not in includes_list:
-            #print("Path:", path)
-            tu_table.append(index.parse(path, ['-I', str(include_path), '-x', 'c++-header']))
+    for j in tu.get_includes():
+        path = normalise_link(j.include)
+        if str(include_path) in path and path not in includes_list:
+            print("Path:", path)
+            tu_table_temp.append(index.parse(path, ['-I', str(include_path), '-x', 'c++-header']))
             includes_list.append(path)
         l = l + 1
 
-    if only_print_current_header:
-        tu_table.reverse()
+    o = 0
+
+    while 1:
+        print("While:", o)
+        for i in range(len(tu_table_temp)):
+            includes_found = 0
+            print("i:", i)
+            print(tu_table_temp[i].spelling)
+            for j in tu_table_temp[i].get_includes():
+                if str(include_path) in normalise_link(j.include) and normalise_link(j.include) not in tu_table_spelling:
+                    print("Include:", normalise_link(j.include))
+                    includes_found = 1
+            print("includes_found:", includes_found)
+            if includes_found == 0 and tu_table_temp[i] not in tu_table:
+                print("saved:", tu_table_temp[i].spelling)
+                tu_table.append(tu_table_temp[i])
+                tu_table_spelling.append(normalise_link(tu_table_temp[i].spelling))
+        o = o + 1
+        print("tu_table_temp:", len(tu_table_temp))
+        print("tu_table:", len(tu_table))
+        if len(tu_table) == len(tu_table_temp):
+            break
+    tu_table.append(tu)
+
+
     for i in tu_table:
-        if only_print_current_header:
-            interface_count_includes = interface_count
-            struct_count_includes = struct_count
         interface_location, interface_token_location, method_count, struct_count, interface_count, \
         interface_name, method_name, method_return, method_args, interface_description, method_args_content,\
         struct_table, struct_content, inherits_table, ID_table, enum_table, data_types, source_file, source_file_interface,\
@@ -609,6 +641,10 @@ if __name__ == '__main__':
         print_conversion()
         print_info()
         print(interface_name)
+        print(include_path)
+        for i in tu_table_temp:
+            print(i.spelling)
+        print()
         for i in tu_table:
             print(i.spelling)
 
