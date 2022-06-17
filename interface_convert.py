@@ -20,6 +20,41 @@ from optparse import OptionParser
 
 Config.set_library_path("venv/Lib/site-packages/clang/native")
 
+def preparse(tu):
+
+    tu_spelling = []
+    tu_access_specifier = []
+
+    interface_open_bracket = 0
+    within_interface = 0
+    j = 0
+    for i in tu.get_tokens(extent=tu.cursor.extent):
+        tu_spelling.append(i.spelling)
+        tu_access_specifier.append(i.cursor.access_specifier)
+
+    for i in tu.get_tokens(extent=tu.cursor.extent):
+
+        # ----- Interfaces ------------------------------------------------------------------
+
+        if tu_spelling[j - 1] != ">" and tu_spelling[j] == "class" and within_interface == 0 and\
+                ((tu_spelling[j + 2] == ":" and tu_spelling[j + 3] == "public") or tu_spelling[j + 1] == "FUnknown")\
+                and i.cursor.kind == i.cursor.kind.CLASS_DECL and within_interface == 0 \
+                and (tu_access_specifier[j] == i.cursor.access_specifier.PUBLIC or tu_access_specifier[j + 3] == i.cursor.access_specifier.PUBLIC):
+            within_interface = 1
+            interface_name.append(tu_spelling[j + 1])
+
+        elif tu_spelling[j] == "{" and within_interface == 1:
+            interface_open_bracket = interface_open_bracket + 1
+
+        if tu_spelling[j] == "}" and within_interface == 1:
+            interface_open_bracket = interface_open_bracket - 1
+            if interface_open_bracket == 0:
+                interface_token_location.append(j)
+                within_interface = 0
+        j = j + 1
+
+    return interface_name
+
 def parsing(tu, method_count, struct_count, interface_count, method_args, method_args_content):
 
     tu_spelling = []
@@ -29,6 +64,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
 
     interface_open_bracket = 0
     struct_open_bracket = 0
+    struct_open_round_bracket = 0
     enum_open_bracket = 0
     within_interface = 0
     within_method = 0
@@ -62,7 +98,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
             within_interface = 1
 
             source_file_interface.append(i.cursor.translation_unit.spelling)
-            interface_name.append(tu_spelling[j + 1])
+            #interface_name.append(tu_spelling[j + 1])
             interface_location.append(tu_location[j])
             interface_token_location.append(j)
             interface_description.append(i.cursor.brief_comment)
@@ -157,15 +193,21 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
         elif tu_spelling[j] == "{" and within_struct == 1:
             struct_open_bracket = struct_open_bracket + 1
 
-        elif within_struct == 1 and within_struct_part == 0 and within_enum == 0 and (tu_spelling[j] in data_types
-            and struct_over != 1 and i.cursor.kind != i.cursor.kind.PARM_DECL and i.cursor.kind != i.cursor.kind.CXX_METHOD):
+        elif tu_spelling[j] == "(" and within_struct == 1:
+            struct_open_round_bracket = struct_open_round_bracket + 1
+
+        elif within_struct == 1 and within_struct_part == 0 and within_enum == 0 and tu_spelling[j] in data_types\
+            and struct_over != 1 and struct_open_bracket < 2 and struct_open_round_bracket == 0 and\
+            i.cursor.kind != i.cursor.kind.PARM_DECL and i.cursor.kind != i.cursor.kind.CXX_METHOD:
             within_struct_part = 1
 
         elif tu_spelling[j] == "SMTG_CONSTEXPR14" and within_struct_part == 1 and within_struct == 1:
             within_struct_part = 0
             struct_over = 1
 
-        if tu_spelling[j] in data_types and within_struct == 1 and within_struct_part == 1 and within_enum == 0 and struct_over != 1 and struct_open_bracket < 2:
+        if tu_spelling[j] in data_types and within_struct == 1 and within_struct_part == 1 and within_enum == 0\
+            and struct_over != 1 and struct_open_bracket < 2 and struct_open_round_bracket == 0 and i.cursor.kind != i.cursor.kind.PARM_DECL\
+            and i.cursor.kind != i.cursor.kind.CXX_METHOD:
             temp = ""
             for k in range(100):
                 if tu_spelling[j + k] != ":" and tu_spelling[j + k + 1] != ":":
@@ -177,6 +219,9 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
                 if tu_spelling[j + k] == ";":
                     break
             struct_content[struct_count - 1].append(temp)
+
+        if tu_spelling[j] == ")" and within_struct == 1:
+            struct_open_round_bracket = struct_open_round_bracket - 1
 
         if tu_spelling[j] == "}" and within_struct == 1:
             struct_open_bracket = struct_open_bracket - 1
@@ -230,10 +275,14 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
         #print("enum_open_bracket: ", enum_open_bracket)
         #print(" ")
 
+
+        if tu_spelling[j] == "IBStream" and tu_spelling[j + 1] == ";":
+            print("IBSTREAM FOUND:", tu_location[j])
+
         j = j + 1
 
     return interface_location, interface_token_location, method_count, struct_count, interface_count,\
-           interface_name, method_name, method_return, method_args, interface_description, method_args_content,\
+           method_name, method_return, method_args, interface_description, method_args_content,\
            struct_table, struct_content, inherits_table, ID_table, enum_table, data_types, source_file,\
            source_file_interface, source_file_struct
 
@@ -373,8 +422,60 @@ def print_info():
                 print(method_name[i][j])
         print()
 
+def print_interface_forward():
+    print("/*------------------------------------------------------------------------")
+    print("Interface forward")
+    print("------------------------------------------------------------------------*/")
+    print()
+    for i in range(interface_count):
+        print("typedef struct {};".format(interface_name[i]))
+    print()
+
+def print_typedefs():
+    print("/*------------------------------------------------------------------------")
+    print("Typedefs")
+    print("------------------------------------------------------------------------*/")
+    print()
+    print("typedef SMTG_char16 SMTG_TChar;")
+    print("typedef SMTG_TChar SMTG_String128[128];")
+    print("typedef const SMTG_char8* SMTG_CString;")
+    print("typedef int32_t SMTG_MediaType;")
+    print("typedef int32_t SMTG_BusDirection;")
+    print("typedef int32_t SMTG_BusType;")
+    print("typedef int32_t SMTG_IoMode;")
+    print("typedef int32_t SMTG_UnitID;")
+    print("typedef double SMTG_ParamValue;")
+    print("typedef uint32_t SMTG_ParamID;")
+    print("typedef int32_t SMTG_ProgramListID;")
+    print("typedef int16_t SMTG_CtrlNumber;")
+    print("typedef double SMTG_TQuarterNotes;")
+    print("typedef int64_t SMTG_TSamples;")
+    print("typedef uint32_t SMTG_ColorSpec;")
+    print("static const SMTG_ParamID SMTG_kNoParamId = 0xffffffff;")
+    print("typedef float SMTG_Sample32;")
+    print("typedef double SMTG_Sample64;")
+    print("typedef double SMTG_SampleRate;")
+    print("typedef uint64_t SMTG_SpeakerArrangement;")
+    print("typedef uint64_t SMTG_Speaker;")
+    print("typedef char int8_t;")
+    print("typedef unsigned char uint8_t;")
+    print("typedef unsigned char SMTG_uchar;")
+    print("typedef short int16_t;")
+    print("typedef unsigned short uint16_t;")
+    print("typedef int64_t SMTG_TSize;")
+    print("typedef int32_t SMTG_tresult;")
+    print("typedef uint8_t SMTG_TBool;")
+    print("typedef int32_t SMTG_UCoord;")
+    print("static const SMTG_UCoord SMTG_kMaxCoord = ((UCoord)0x7FFFFFFF);")
+    print("static const SMTG_UCoord SMTG_kMinCoord = ((UCoord)-0x7FFFFFFF);")
+    print("typedef const char* SMTG_AttrID;")
+    print("typedef int64_t SMTG_ID")
+    print()
+
 def print_conversion():
     print_standard()
+    print_interface_forward()
+    print_typedefs()
     print_structs()
     print_interface()
 
@@ -508,8 +609,61 @@ def write_info():
         h.write("\n")
     h.write("------------------------------------------------------------------------*/\n")
 
+def write_interface_forward():
+    h.write("/*------------------------------------------------------------------------\n")
+    h.write("Interface forward\n")
+    h.write("------------------------------------------------------------------------*/\n")
+    h.write("\n")
+    for i in range(interface_count):
+        h.write("typedef struct {};\n".format(interface_name[i]))
+    h.write("\n")
+
+def write_typedefs():
+    h.write("/*------------------------------------------------------------------------\n")
+    h.write("Typedefs\n")
+    h.write("------------------------------------------------------------------------*/\n")
+    h.write("\n")
+    h.write("typedef SMTG_char16 SMTG_TChar;\n")
+    h.write("typedef SMTG_TChar SMTG_String128[128];\n")
+    h.write("typedef const SMTG_char8* SMTG_CString;\n")
+    h.write("typedef int32_t SMTG_MediaType;\n")
+    h.write("typedef int32_t SMTG_BusDirection;\n")
+    h.write("typedef int32_t SMTG_BusType;\n")
+    h.write("typedef int32_t SMTG_IoMode;\n")
+    h.write("typedef int32_t SMTG_UnitID;\n")
+    h.write("typedef double SMTG_ParamValue;\n")
+    h.write("typedef uint32_t SMTG_ParamID;\n")
+    h.write("typedef int32_t SMTG_ProgramListID;\n")
+    h.write("typedef int16_t SMTG_CtrlNumber;\n")
+    h.write("typedef double SMTG_TQuarterNotes;\n")
+    h.write("typedef int64_t SMTG_TSamples;\n")
+    h.write("typedef uint32_t SMTG_ColorSpec;\n")
+    h.write("static const SMTG_ParamID SMTG_kNoParamId = 0xffffffff;\n")
+    h.write("typedef float SMTG_Sample32;\n")
+    h.write("typedef double SMTG_Sample64;\n")
+    h.write("typedef double SMTG_SampleRate;\n")
+    h.write("typedef uint64_t SMTG_SpeakerArrangement;\n")
+    h.write("typedef uint64_t SMTG_Speaker;\n")
+    #h.write("typedef char int8_t;\n")
+    #h.write("typedef unsigned char uint8_t;\n")
+    h.write("typedef unsigned char SMTG_uchar;\n")
+    #h.write("typedef short int16_t;\n")
+    #h.write("typedef unsigned short uint16_t;\n")
+    h.write("typedef int64_t SMTG_TSize;\n")
+    h.write("typedef int32_t SMTG_tresult;\n")
+    h.write("typedef uint8_t SMTG_TBool;\n")
+    h.write("typedef int32_t SMTG_UCoord;\n")
+    h.write("static const SMTG_UCoord SMTG_kMaxCoord = ((SMTG_UCoord)0x7FFFFFFF);\n")
+    h.write("static const SMTG_UCoord SMTG_kMinCoord = ((SMTG_UCoord)-0x7FFFFFFF);\n")
+    h.write("typedef const char* SMTG_AttrID;\n")
+    h.write("typedef int64_t SMTG_ID;\n")
+    h.write("\n")
+
+
 def write_conversion():
     write_standard()
+    write_interface_forward()
+    write_typedefs()
     write_structs()
     write_interface()
 
@@ -565,7 +719,11 @@ if __name__ == '__main__':
     source_file_struct = []
     data_types = ["int32", "char8", "char16", "TUID", "uint32", "ParamID", "String128", "ParamValue", "UnitID"]
     remove_table = ["/*out*/", "/*in*/"]
-    SMTG_table = ["tresult", "FUnknown", "char8", "char16", "IBStream", "ParamID", "ParamValue"]
+    SMTG_table = ["char8", "char16", "IBStream", "TChar", "String128", "CString", "MediaType", "BusDirection",
+                  "BusType", "IoMode", "UnitID", "ParamValue", "ParamID", "ProgramListID", "CtrlNumber",
+                  "TQuarterNotes", "TSamples", "ColorSpec", "kNoParamId", "Sample32", "Sample64", "SampleRate",
+                  "SpeakerArrangement", "Speaker", "uchar", "TSize", "tresult", "TBool", "UCoord", "kMaxCoord",
+                  "kMinCoord", "AttrID", "ID"]
     _t_table = ["int8", "int16", "int32", "int64", "int128", "uint8", "uint16", "uint32", "uint64", "uint128"]
     SMTG_TUID_table = ["FIDString", "TUID"]
     SMTG_table_ptr = []
@@ -613,10 +771,13 @@ if __name__ == '__main__':
             break
     tu_table.append(tu)
 
+    for i in tu_table:
+        interface_name = preparse(i)
+    print(interface_name)
 
     for i in tu_table:
         interface_location, interface_token_location, method_count, struct_count, interface_count, \
-        interface_name, method_name, method_return, method_args, interface_description, method_args_content,\
+        method_name, method_return, method_args, interface_description, method_args_content,\
         struct_table, struct_content, inherits_table, ID_table, enum_table, data_types, source_file, source_file_interface,\
         source_file_struct = parsing(i, method_count, struct_count, interface_count, method_args, method_args_content)
 

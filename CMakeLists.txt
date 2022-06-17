@@ -28,11 +28,14 @@ execute_process(COMMAND venv/Scripts/python.exe -m pip install libclang)
 execute_process(COMMAND venv/Scripts/python.exe -m pip install clang)
 execute_process(COMMAND venv/Scripts/python.exe -m pip install wheel)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/header_compilation.h
-        DESTINATION ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst)
-
 add_custom_command(TARGET GeneratorTest
                     PRE_BUILD
                     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+                    COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
+                    COMMAND venv/Scripts/python.exe ${CMAKE_CURRENT_SOURCE_DIR}/generate_header_compilation.py
                     COMMAND venv/Scripts/python.exe ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
                     )
+#add_custom_command(TARGET GeneratorTest
+#                    POST_BUILD
+#                    COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
+#                    )
