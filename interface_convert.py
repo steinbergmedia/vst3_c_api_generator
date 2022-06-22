@@ -55,6 +55,7 @@ def preparse(tu):
 
     return interface_name
 
+
 def parsing(tu, method_count, struct_count, interface_count, method_args, method_args_content):
 
     tu_spelling = []
@@ -86,6 +87,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
         tu_access_specifier.append(i.cursor.access_specifier)
 
 
+
     for i in tu.get_tokens(extent=tu.cursor.extent):
 
         # ----- Interfaces ------------------------------------------------------------------
@@ -114,6 +116,7 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
 
             method_args.append(interface_count)
             method_args[interface_count - 1] = []
+
             ID_table.append(i.cursor.brief_comment)
             ID_table[interface_count - 1] = []
 
@@ -266,18 +269,8 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
             for k in range(4):
                 ID_table[interface_count - 1].append(tu_spelling[j + 2 * k + 4])
 
-        #print(tu_spelling[j])
-        #print(tu_location[j])
-        #print("within_struct: ", within_struct)
-        #print("within_struct_part: ", within_struct_part)
-        #print("struct_open_bracket: ", struct_open_bracket)
-        #print("within_enum: ", within_enum)
-        #print("enum_open_bracket: ", enum_open_bracket)
-        #print(" ")
-
-
-        if tu_spelling[j] == "IBStream" and tu_spelling[j + 1] == ";":
-            print("IBSTREAM FOUND:", tu_location[j])
+        if tu_spelling[j] == "tchar" and tu_spelling[j + 1] == ";":
+            print("tchar found:", tu_location[j])
 
         j = j + 1
 
@@ -470,6 +463,10 @@ def print_typedefs():
     print("static const SMTG_UCoord SMTG_kMinCoord = ((UCoord)-0x7FFFFFFF);")
     print("typedef const char* SMTG_AttrID;")
     print("typedef int64_t SMTG_ID")
+    print("typedef uint32_t SMTG_NoteExpressionTypeID;")
+    print("typedef double SMTG_NoteExpressionValue;")
+    print("typedef int32_t SMTG_KnobMode;")
+    #print("typedef SMTG_IContextMenuItem SMTG_Item;")
     print()
 
 def print_conversion():
@@ -638,7 +635,7 @@ def write_typedefs():
     h.write("typedef double SMTG_TQuarterNotes;\n")
     h.write("typedef int64_t SMTG_TSamples;\n")
     h.write("typedef uint32_t SMTG_ColorSpec;\n")
-    h.write("static const SMTG_ParamID SMTG_kNoParamId = 0xffffffff;\n")
+    #h.write("static const SMTG_ParamID SMTG_kNoParamId = 0xffffffff;\n")
     h.write("typedef float SMTG_Sample32;\n")
     h.write("typedef double SMTG_Sample64;\n")
     h.write("typedef double SMTG_SampleRate;\n")
@@ -653,10 +650,14 @@ def write_typedefs():
     h.write("typedef int32_t SMTG_tresult;\n")
     h.write("typedef uint8_t SMTG_TBool;\n")
     h.write("typedef int32_t SMTG_UCoord;\n")
-    h.write("static const SMTG_UCoord SMTG_kMaxCoord = ((SMTG_UCoord)0x7FFFFFFF);\n")
-    h.write("static const SMTG_UCoord SMTG_kMinCoord = ((SMTG_UCoord)-0x7FFFFFFF);\n")
+    #h.write("static const SMTG_UCoord SMTG_kMaxCoord = ((SMTG_UCoord)0x7FFFFFFF);\n")
+    #h.write("static const SMTG_UCoord SMTG_kMinCoord = ((SMTG_UCoord)-0x7FFFFFFF);\n")
     h.write("typedef const char* SMTG_AttrID;\n")
     h.write("typedef int64_t SMTG_ID;\n")
+    h.write("typedef uint32_t SMTG_NoteExpressionTypeID;\n")
+    h.write("typedef double SMTG_NoteExpressionValue;\n")
+    h.write("typedef int32_t SMTG_KnobMode;\n")
+    #h.write("typedef SMTG_IContextMenuItem SMTG_Item;\n")
     h.write("\n")
 
 
@@ -672,20 +673,10 @@ def normalise_link(path):
     return path.replace("\\", "/")
 
 
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
 
     print_header = True
-    write_header = True
-
+    write_header = False
 
     parser = OptionParser("usage: {filename} [clang-args*]")
     (opts, filename) = parser.parse_args()
@@ -723,7 +714,7 @@ if __name__ == '__main__':
                   "BusType", "IoMode", "UnitID", "ParamValue", "ParamID", "ProgramListID", "CtrlNumber",
                   "TQuarterNotes", "TSamples", "ColorSpec", "kNoParamId", "Sample32", "Sample64", "SampleRate",
                   "SpeakerArrangement", "Speaker", "uchar", "TSize", "tresult", "TBool", "UCoord", "kMaxCoord",
-                  "kMinCoord", "AttrID", "ID"]
+                  "kMinCoord", "AttrID", "ID", "NoteExpressionTypeID", "NoteExpressionValue", "KnobMode"]
     _t_table = ["int8", "int16", "int32", "int64", "int128", "uint8", "uint16", "uint32", "uint64", "uint128"]
     SMTG_TUID_table = ["FIDString", "TUID"]
     SMTG_table_ptr = []
@@ -743,37 +734,36 @@ if __name__ == '__main__':
     for j in tu.get_includes():
         path = normalise_link(j.include)
         if str(include_path) in path and path not in includes_list:
-            print("Path:", path)
+            #print("Path:", path)
             tu_table_temp.append(index.parse(path, ['-I', include_path, '-x', 'c++-header']))
             includes_list.append(path)
 
-    o = 0
+    #o = 0
 
     while 1:
-        print("While:", o)
+        #print("While:", o)
         for i in range(len(tu_table_temp)):
             includes_found = False
-            print("i:", i)
-            print(tu_table_temp[i].spelling)
+            #print("i:", i)
+            #print(tu_table_temp[i].spelling)
             for j in tu_table_temp[i].get_includes():
                 if include_path in normalise_link(j.include) and normalise_link(j.include) not in tu_table_spelling:
-                    print("Include:", normalise_link(j.include))
+                    #print("Include:", normalise_link(j.include))
                     includes_found = True
-            print("includes_found:", includes_found)
+            #print("includes_found:", includes_found)
             if not includes_found and tu_table_temp[i] not in tu_table:
-                print("saved:", tu_table_temp[i].spelling)
+                #print("saved:", tu_table_temp[i].spelling)
                 tu_table.append(tu_table_temp[i])
                 tu_table_spelling.append(normalise_link(tu_table_temp[i].spelling))
-        o = o + 1
-        print("tu_table_temp:", len(tu_table_temp))
-        print("tu_table:", len(tu_table))
+        #o = o + 1
+        #print("tu_table_temp:", len(tu_table_temp))
+        #print("tu_table:", len(tu_table))
         if len(tu_table) == len(tu_table_temp):
             break
     tu_table.append(tu)
 
     for i in tu_table:
         interface_name = preparse(i)
-    print(interface_name)
 
     for i in tu_table:
         interface_location, interface_token_location, method_count, struct_count, interface_count, \
@@ -781,17 +771,18 @@ if __name__ == '__main__':
         struct_table, struct_content, inherits_table, ID_table, enum_table, data_types, source_file, source_file_interface,\
         source_file_struct = parsing(i, method_count, struct_count, interface_count, method_args, method_args_content)
 
+    print(method_args)
+
     if (print_header):
-        #print_conversion()
+        print_conversion()
         print_info()
-        for i in tu_table_temp:
-            print(i.spelling)
-        print()
-        for i in tu_table:
-            print(i.spelling)
+        #for i in tu_table_temp:
+        #    print(i.spelling)
+        #print()
+        #for i in tu_table:
+        #    print(i.spelling)
 
     if (write_header):
         header_path = "test_header.h"
         with open(header_path, 'w') as h:
             write_conversion()
-            #write_info()
