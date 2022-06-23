@@ -19,7 +19,7 @@ def parsing(tu, interface_count, method_count, struct_count):
             for i in n.get_children():
             # ----- Interfaces ------------------------------------------------------------------
 
-            # ----- Interface name -----
+                # ----- Interface name -----
                 if i.kind == i.kind.CLASS_DECL:
                     source_interface.append("Source: \"{}\", line {}".format(i.location.file, i.location.line))
                     interface_description.append(i.brief_comment)
@@ -38,19 +38,16 @@ def parsing(tu, interface_count, method_count, struct_count):
                     method_args.append(interface_count)
                     method_args[interface_count - 1] = []
 
-                # ----- Within interface -----
+                    # ----- Within interface -----
+
                     method_count_local = 0
                     for j in i.get_children():
-                    # ----- Interface inheritance -----
-                        if j.kind == j.kind.CXX_BASE_SPECIFIER:
-                            for k in range(len(inherits_table[interface_count - 1]) + 1):
-                                if normalise_namespace(namespace_local, j.type.spelling) in interface_name:
-                                    inherits_location = interface_name.index(normalise_namespace(namespace_local, j.type.spelling))
-                                    for n in range(len(inherits_table[inherits_location])):
-                                        inherits_table[interface_count - 1].append(inherits_table[inherits_location][n])
-                            inherits_table[interface_count - 1].append(normalise_namespace(namespace_local, j.type.spelling))
 
-                    # ----- Methods -----
+                        # ----- Interface inheritance -----
+
+                        inheritance(j, namespace_local)
+
+                        # ----- Methods -----
 
                         if j.kind == j.kind.CXX_METHOD:
                             method_count = method_count + 1
@@ -62,46 +59,127 @@ def parsing(tu, interface_count, method_count, struct_count):
                             method_name[interface_count - 1].append(j.spelling)
                             method_return[interface_count - 1].append(convert(normalise_namespace(namespace_local, j.result_type.spelling)))
 
-                            p = 0
-                            method_args_content = []
-                            for k in j.get_arguments():
-                                if p > 0:
-                                    method_args_content.append(", ")
-                                if k.type.kind == k.type.kind.POINTER:
-                                    method_args_content.append(convert(normalise_namespace(namespace_local, k.type.spelling).replace(" *", "")))
-                                    method_args_content.append("*")
-                                else:
-                                    method_args_content.append(convert(normalise_namespace(namespace_local, k.type.spelling)))
-                                method_args_content.append(" ")
-                                method_args_content.append(convert(k.spelling))
-                                p = p + 1
+                            method_args_content = get_method_argument_string(j, namespace_local, method_count_local)
                             method_args[interface_count - 1][method_count_local - 1].append("".join(method_args_content))
 
-            # ----- Structs ------------------------------------------------------------------
+                # ----- Enums ------------------------------------------------------------------
+                parse_enum(i)
+
+                # ----- Structs ------------------------------------------------------------------
 
                 if i.kind == i.kind.STRUCT_DECL:
                     r = 0
                     for j in i.get_children():
+                        parse_enum(j)
                         if j.kind == j.kind.FIELD_DECL:
+                            struct_args = ""
+                            struct_return = ""
+
                             if r == 0:
                                 struct_count = struct_count + 1
                                 struct_table.append(i.spelling)
                                 struct_content.append(struct_count + 1)
                                 struct_content[struct_count - 1] = []
-                            print(j.spelling)
+                            for d in j.get_children():
+                                if d.kind == d.kind.DECL_REF_EXPR:
+                                    struct_args = convert(d.spelling)
+                                if d.kind == d.kind.TYPE_REF:
+                                    struct_return = convert(normalise_namespace(namespace_local, d.spelling))
+                            if struct_args != "":
+                                struct_content[struct_count - 1].append("{} {} [{}];".format(struct_return, j.spelling, struct_args))
+                            else:
+                                struct_content[struct_count - 1].append("{} {};".format(struct_return, j.spelling))
                             r = r + 1
-            # ----- Enums ------------------------------------------------------------------
 
-            # ----- ID ------------------------------------------------------------------
+                # ----- ID ------------------------------------------------------------------
 
 
 
                 l = l + 1
     return interface_count, method_count, struct_count
 
+def parse_enum(i):
+    if i.kind == i.kind.ENUM_DECL:
+        for j in i.get_children():
+            if j.kind == j.kind.ENUM_CONSTANT_DECL:
+                enum_table.append(j.spelling)
+                for k in j.get_children():
+                    if k.kind == k.kind.INTEGER_LITERAL or k.kind == k.kind.BINARY_OPERATOR:
+                        enum_table.append(array_to_string(get_values_in_extent(k), True))
+
+def array_to_string(array, spaces):
+    string = ""
+    if spaces:
+        for i in range(len(array)):
+                if i != 0:
+                    string = string + " "
+                string = string + array[i]
+    else:
+        string = "".join(array)
+    return string
+
+def get_values_in_extent(i):
+    values = []
+    for j in i.get_tokens():
+        values.append(j.spelling)
+    return values
+
+def print_structs():
+    for i in range(struct_count):
+        print("//------------------------------------------------------------------------")
+        #print("// source: \"{}\"".format(source_file_struct[i]))
+        print()
+        print("struct SMTG_{} {}".format(struct_table[i], "{"))
+        for j in range(len(struct_content[i])):
+            print("    {}".format(struct_content[i][j]))
+        print("};")
+        print()
+
+
+def inheritance(j, namespace_local):
+    if j.kind == j.kind.CXX_BASE_SPECIFIER:
+        for k in range(len(inherits_table[interface_count - 1]) + 1):
+            if normalise_namespace(namespace_local, j.type.spelling) in interface_name:
+                inherits_location = interface_name.index(normalise_namespace(namespace_local, j.type.spelling))
+                for n in range(len(inherits_table[inherits_location])):
+                    inherits_table[interface_count - 1].append(inherits_table[inherits_location][n])
+        inherits_table[interface_count - 1].append(normalise_namespace(namespace_local, j.type.spelling))
+
+def get_method_argument_string(j, namespace_local, method_count_local):
+    p = 0
+    method_args_content = []
+    for k in j.get_arguments():
+        if p > 0:
+            method_args_content.append(", ")
+        if k.type.kind == k.type.kind.POINTER:
+            method_args_content.append(convert(normalise_namespace(namespace_local, k.type.spelling).replace(" *", "")))
+            method_args_content.append("*")
+        else:
+            method_args_content.append(convert(normalise_namespace(namespace_local, k.type.spelling)))
+        method_args_content.append(" ")
+        method_args_content.append(convert(k.spelling))
+        p = p + 1
+    return method_args_content
+
+def get_methods(j, method_count, method_count_local, namespace_local):
+    if j.kind == j.kind.CXX_METHOD:
+        method_count = method_count + 1
+        method_count_local = method_count_local + 1
+
+        method_args[interface_count - 1].append(method_count_local)
+        method_args[interface_count - 1][method_count_local - 1] = []
+
+        method_name[interface_count - 1].append(j.spelling)
+        method_return[interface_count - 1].append(convert(normalise_namespace(namespace_local, j.result_type.spelling)))
+
+        method_args_content = get_method_argument_string(j, namespace_local, method_count_local)
+        method_args[interface_count - 1][method_count_local - 1].append(array_to_string(method_args_content, False))
+
+        return method_count
+
 def convert(source):
-    if source in enum_table:
-        source = enum_table[enum_table.index(source) + 1]
+    if source in enum_table and not source.isnumeric():
+        source = convert(enum_table[enum_table.index(source) + 1])
     elif source in SMTG_table or source in SMTG_table_ptr or source in struct_table or source in interface_name:
         source = "SMTG_{}".format(source)
     elif source in _t_table:
@@ -223,6 +301,7 @@ if __name__ == '__main__':
     method_count = 0
     struct_count = 0
 
+
 # ----- Conversion arrays -----
     data_types = ["int32", "char8", "char16", "TUID", "uint32", "ParamID", "String128", "ParamValue", "UnitID"]
     remove_table = ["/*out*/", "/*in*/"]
@@ -241,7 +320,10 @@ if __name__ == '__main__':
 
 # ----- Parsing -----
     interface_count, method_count, struct_count = parsing(tu.cursor, interface_count, method_count, struct_count)
-    print(struct_table)
+
 # ----- Print -----
+    print_structs()
     print_interface()
     print_info()
+    #print(struct_table)
+    #print(enum_table)
