@@ -268,8 +268,8 @@ def parsing(tu, method_count, struct_count, interface_count, method_args, method
         if tu_spelling[j] == "DECLARE_CLASS_IID" and tu_spelling[j - 1] != "define":
             for k in range(4):
                 ID_table[interface_count - 1].append(tu_spelling[j + 2 * k + 4])
-            print(i.cursor.kind)
-            print(i.cursor.type.kind)
+            #print(i.cursor.kind)
+            #print(i.cursor.type.kind)
 
         j = j + 1
 
