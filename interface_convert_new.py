@@ -6,6 +6,9 @@ from optparse import OptionParser
 
 Config.set_library_path("venv/Lib/site-packages/clang/native")
 
+
+# ----- preparse -------------------------------------------------------------------------------------------------------
+
 def preparse_header(tu):
     for n in tu.get_children():
         if include_path in normalise_link(n.location.file) and normalise_link(n.location.file) not in includes_table_preparse:
@@ -38,7 +41,7 @@ def preparse_structs(i):
                 r = r + 1
 
 
-
+# ----- parse ----------------------------------------------------------------------------------------------------------
 
 def parse_header(tu):
     for n in tu.get_children():
@@ -47,19 +50,19 @@ def parse_header(tu):
             parse_namespace(n)
             parsing(n)
 
-
 def parse_namespace(n):
         if n.kind == n.kind.NAMESPACE:
             for i in n.get_children():
                 parse_namespace(i)
                 parsing(i)
 
-
 def parsing(i):
     parse_interfaces(i)
     parse_enum(i)
     parse_structs(i)
 
+
+# ----- parse interfaces ---------------------------------------------------------------
 
 def parse_interfaces(i):
     if i.kind == i.kind.CLASS_DECL:
@@ -84,6 +87,20 @@ def parse_interfaces(i):
             parse_inheritance(j)
             method_count_local = parse_methods(j, method_count_local)
 
+
+# ----- parse inheritances ---------------------------------------------------------------
+
+def parse_inheritance(j):
+    if j.kind == j.kind.CXX_BASE_SPECIFIER:
+        for k in range(len(inherits_table[len(interface_name) - 1]) + 1):
+            if normalise_namespace(j.type.spelling) in interface_name:
+                inherits_location = interface_name.index(normalise_namespace(j.type.spelling))
+                for n in range(len(inherits_table[inherits_location])):
+                    inherits_table[len(interface_name) - 1].append(inherits_table[inherits_location][n])
+        inherits_table[len(interface_name) - 1].append(normalise_namespace(j.type.spelling))
+
+
+# ----- parse methods ---------------------------------------------------------------
 
 def parse_methods(j, method_count_local):
     if j.kind == j.kind.CXX_METHOD:
@@ -116,14 +133,8 @@ def parse_method_arguments(j):
         p = p + 1
     return method_args_content
 
-def fix_pointers(i, array):
-    if i.type.kind == i.type.kind.POINTER:
-        array.append(convert(i.type.spelling))
-    elif i.type.kind == i.type.kind.LVALUEREFERENCE or i.type.kind == i.type.kind.RVALUEREFERENCE:
-        array.append(convert(i.type.spelling))
-    else:
-        array.append(convert(i.type.spelling))
 
+# ----- parse structs ---------------------------------------------------------------
 
 def parse_structs(i):
     if i.kind == i.kind.STRUCT_DECL:
@@ -152,98 +163,59 @@ def parse_structs(i):
 
                 r = r + 1
 
+
+# ----- parse enums ---------------------------------------------------------------
+
 def parse_enum(i):
     if i.kind == i.kind.ENUM_DECL:
+        enum_name.append(i.spelling)
+        enum_table.append(len(enum_name) - 1)
+        enum_table[len(enum_name) - 1] = []
+        enum_source.append("Source: {}, line {}".format(normalise_link(i.location.file), i.location.line))
+
         for j in i.get_children():
             if j.kind == j.kind.ENUM_CONSTANT_DECL:
-                enum_table.append(j.spelling)
+                enum_table[len(enum_name) - 1].append(j.spelling)
+                enum_table_continuous.append(j.spelling)
                 for k in j.get_children():
                     if k.kind == k.kind.INTEGER_LITERAL or k.kind == k.kind.BINARY_OPERATOR:
-                        enum_table.append(array_to_string(get_values_in_extent(k), True))
-
-def array_to_string(array, spaces):
-    string = ""
-    if spaces:
-        for i in range(len(array)):
-                if i != 0:
-                    string = string + " "
-                string = string + array[i]
-    else:
-        string = "".join(array)
-    return string
-
-def get_values_in_extent(i):
-    values = []
-    for j in i.get_tokens():
-        values.append(j.spelling)
-    return values
-
-def parse_inheritance(j):
-    if j.kind == j.kind.CXX_BASE_SPECIFIER:
-        for k in range(len(inherits_table[len(interface_name) - 1]) + 1):
-            if normalise_namespace(j.type.spelling) in interface_name:
-                inherits_location = interface_name.index(normalise_namespace(j.type.spelling))
-                for n in range(len(inherits_table[inherits_location])):
-                    inherits_table[len(interface_name) - 1].append(inherits_table[inherits_location][n])
-        inherits_table[len(interface_name) - 1].append(normalise_namespace(j.type.spelling))
-
-def convert(source):
-    print(source)
-    source = normalise_args(source)
-    source = remove_spaces(source)
-    source = normalise_namespace(source)
-    print("  ", source)
-    if source in enum_table and not source.isnumeric():
-        source = convert(enum_table[enum_table.index(source) + 1])
-
-    elif source in SMTG_table or source in SMTG_table_ptr or source in struct_table_preparse or source in interface_name_preparse:
-        source = "SMTG_{}".format(source)
-    elif source in SMTG_table_double_ptr or source in struct_table_preparse_double_ptr or source in interface_name_preparse_double_ptr:
-        source = "SMTG_{}**".format(source.replace("**", ""))
-    elif source in SMTG_table_ptr or source in struct_table_preparse_ptr or source in interface_name_preparse_ptr:
-        source = "SMTG_{}*".format(source.replace("*", ""))
-    elif source in SMTG_table_rvr or source in struct_table_preparse_rvr or source in interface_name_preparse_rvr:
-        source = "SMTG_{}&&".format(source.replace("&&", ""))
-    elif source in SMTG_table_lvr or source in struct_table_preparse_lvr or source in interface_name_preparse_lvr:
-        source = "SMTG_{}&".format(source.replace("&", ""))
-
-    elif source in _t_table:
-        source = "{}_t".format(source)
-    elif source in _t_table_double_ptr:
-        source = "{}_t**".format(source.replace("**", ""))
-    elif source in _t_table_ptr:
-        source = "{}_t*".format(source.replace("*", ""))
-    elif source in _t_table_rvr:
-        source = "{}_t&&".format(source.replace("&&", ""))
-    elif source in _t_table_lvr:
-        source = "{}_t&".format(source.replace("&", ""))
-
-    elif source in SMTG_TUID_table or source in SMTG_TUID_table_ptr:
-        source = "SMTG_TUID"
-    elif source in SMTG_TUID_table_double_ptr:
-        source = "SMTG_TUID**".format(source.replace("**", ""))
-    elif source in SMTG_TUID_table_ptr:
-        source = "SMTG_TUID*".format(source.replace("*", ""))
-    elif source in SMTG_TUID_table_rvr:
-        source = "SMTG_TUID&&".format(source.replace("&&", ""))
-    elif source in SMTG_TUID_table_rvr:
-        source = "SMTG_TUID&".format(source.replace("&", ""))
-
-    elif source == "_iid":
-        source = "iid"
-    elif source in remove_table:
-        source = ""
-    print("     ", source)
-    print()
-    return source
+                        if array_to_string(get_values_in_extent(k), True) != "":
+                            enum_table[len(enum_name) - 1].append(array_to_string(get_values_in_extent(k), True))
+                            enum_table_continuous.append(array_to_string(get_values_in_extent(k), True))
+                    else:
+                        enum_table[len(enum_name) - 1].append("nil")
 
 
 # ----- print functions ------------------------------------------------------------------------------------------------
 
+def print_enums():
+    for i in range(len(enum_table)):
+        print("// ----------------------------------------------------------------------------------------------------")
+        print("// {}".format(enum_source[i]))
+        print()
+        if enum_name[i] == "":
+            print("enum")
+        else:
+            print("enum SMTG_{}". format(enum_name[i]))
+        print("{")
+        for j in range(int(len(enum_table[i]) / 2)):
+            if j < int(len(enum_table[i]) / 2) - 1:
+                if enum_table[i][2 * j + 1] != "nil":
+                    print("{} = {},".format(enum_table[i][2 * j], enum_table[i][2 * j + 1]))
+                else:
+                    print("{},".format(enum_table[i][2 * j]))
+            else:
+                if enum_table[i][2 * j + 1] != "nil":
+                    print("{} = {}".format(enum_table[i][2 * j], enum_table[i][2 * j + 1]))
+                else:
+                    print("{}".format(enum_table[i][2 * j]))
+        print("};")
+        print()
+
 def print_structs():
     for i in range(len(struct_table)):
-        print("//------------------------------------------------------------------------")
-        print(struct_source[i])
+        print("// ----------------------------------------------------------------------------------------------------")
+        print("// {}".format(struct_source[i]))
         print()
         print("struct SMTG_{} {}".format(struct_table[i], "{"))
         for j in range(len(struct_content[i])):
@@ -280,10 +252,10 @@ def print_methods(i):
 
 def print_interface():
     for i in range(len(interface_name)):
-        print("// ------------------------------------------------------------------------")
+        print("// ----------------------------------------------------------------------------------------------------")
         print("// Steinberg::{}".format(interface_name[i]))
         print("// {}".format(interface_source[i]))
-        print("// ------------------------------------------------------------------------\n")
+        print("// ----------------------------------------------------------------------------------------------------\n")
         print("typedef struct SMTG_{}Vtbl".format(interface_name[i]))
         print("{")
         print_methods(i)
@@ -298,7 +270,6 @@ def print_interface():
         #                                                                         ID_table[i][2],
         #                                                                         ID_table[i][3]))
         print()
-
 
 def print_info():
     for i in range(len(interface_name)):
@@ -346,61 +317,150 @@ def print_standard():
     print("typedef int32_t SMTG_tresult;")
     print("typedef uint_least16_t SMTG_char16;")
     print("typedef uint8_t SMTG_char8;\n")
-    print("//------------------------------------------------------------------------")
+    print("// ----------------------------------------------------------------------------------------------------")
     print("// {}".format(source_file))
-    print("//------------------------------------------------------------------------")
+    print("// ----------------------------------------------------------------------------------------------------")
     print()
 
 def print_conversion():
     print_standard()
+    print_enums()
     print_structs()
     print_interface()
     print_info()
 
 
-# ----- normalise functions --------------------------------------------------------------------------------------------
+# ----- utility functions ----------------------------------------------------------------------------------------------
 
-def normalise_link(string):
-    string = str(string)
-    return string.replace("\\", "/")
+def normalise_link(source):
+    source = str(source)
+    return source.replace("\\", "/")
 
-def normalise_namespace(string):
-    string = str(string)
-    #print(string)
-    if "::" in string:
-        string = string[string.index("::") + 2:]
-        #print(" ", string)
-        string = normalise_namespace(string)
+def normalise_namespace(source):
+    source = str(source)
+    #print(source)
+    if "::" in source:
+        source = source[source.index("::") + 2:]
+        #print(" ", source)
+        source = normalise_namespace(source)
     #print()
+    return source
+
+def normalise_args(source):
+    source = str(source)
+    if "[" in source:
+        source = source[:source.index("[")]
+    return source
+
+def remove_spaces(source):
+    source = str(source)
+    if " " in source:
+        source = source.replace(" ", "")
+    return source
+
+def array_to_string(array, spaces):
+    string = ""
+    if spaces:
+        for i in range(len(array)):
+                if i != 0:
+                    string = string + " "
+                string = string + array[i]
+    else:
+        string = "".join(array)
     return string
 
-def normalise_args(string):
-    string = str(string)
-    if "[" in string:
-        string = string[:string.index("[")]
-    return string
+def get_values_in_extent(i):
+    values = []
+    for j in i.get_tokens():
+        values.append(j.spelling)
+    return values
 
-def remove_pointers(string):
-    string = str(string)
-    print(string)
-    if " **" in string:
-        print(" ", string.replace("**", ""))
-        return string.replace("**", "")
-    elif " *" in string:
-        print(" ", string.replace("*", ""))
-        return string.replace("*", ""),
-    elif " &&" in string:
-        print(" ", string.replace("&&", ""))
-        return string.replace("&&", "")
-    elif " &" in string:
-        print(" ", string.replace("&", ""))
-        return string.replace("&", "")
+def create_pointer_lists():
+    for i in SMTG_table:
+        SMTG_table_ptr.append(i + "*")
+        SMTG_table_double_ptr.append(i + "**")
+        SMTG_table_lvr.append(i + "&")
+        SMTG_table_rvr.append(i + "&&")
+    for i in _t_table:
+        _t_table_ptr.append(i + "*")
+        _t_table_double_ptr.append(i + "**")
+        _t_table_lvr.append(i + "&")
+        _t_table_rvr.append(i + "&&")
+    for i in SMTG_TUID_table:
+        SMTG_TUID_table_ptr.append(i + "*")
+        SMTG_TUID_table_double_ptr.append(i + "**")
+        SMTG_TUID_table_ptr.append(i + "&")
+        SMTG_TUID_table_double_ptr.append(i + "&&")
+    for i in interface_name_preparse:
+        interface_name_preparse_ptr.append(i + "*")
+        interface_name_preparse_double_ptr.append(i + "**")
+        interface_name_preparse_lvr.append(i + "&")
+        interface_name_preparse_rvr.append(i + "&&")
+    for i in struct_table_preparse:
+        struct_table_preparse_ptr.append(i + "*")
+        struct_table_preparse_double_ptr.append(i + "**")
+        struct_table_preparse_lvr.append(i + "&")
+        struct_table_preparse_rvr.append(i + "&&")
 
-def remove_spaces(string):
-    string = str(string)
-    if " " in string:
-        string = string.replace(" ", "")
-    return string
+
+# ----- conversion function --------------------------------------------------------------------------------------------
+
+def convert(source):
+    found_const = False
+    source = str(source)
+    #print(source)
+    if "const " in source:
+        source = source.replace("const ", "")
+        found_const = True
+    source = normalise_args(source)
+    source = remove_spaces(source)
+    source = normalise_namespace(source)
+    #print("  ", source)
+    if source in enum_table_continuous and not source.isnumeric():
+        source = convert(enum_table_continuous[enum_table_continuous.index(source) + 1])
+
+    elif source in SMTG_table or source in SMTG_table_ptr or source in struct_table_preparse or source in interface_name_preparse:
+        source = "SMTG_{}".format(source)
+    elif source in SMTG_table_double_ptr or source in struct_table_preparse_double_ptr or source in interface_name_preparse_double_ptr:
+        source = "SMTG_{}**".format(source.replace("**", ""))
+    elif source in SMTG_table_ptr or source in struct_table_preparse_ptr or source in interface_name_preparse_ptr:
+        source = "SMTG_{}*".format(source.replace("*", ""))
+    elif source in SMTG_table_rvr or source in struct_table_preparse_rvr or source in interface_name_preparse_rvr:
+        source = "SMTG_{}&&".format(source.replace("&&", ""))
+    elif source in SMTG_table_lvr or source in struct_table_preparse_lvr or source in interface_name_preparse_lvr:
+        source = "SMTG_{}&".format(source.replace("&", ""))
+
+    elif source in _t_table:
+        source = "{}_t".format(source)
+    elif source in _t_table_double_ptr:
+        source = "{}_t**".format(source.replace("**", ""))
+    elif source in _t_table_ptr:
+        source = "{}_t*".format(source.replace("*", ""))
+    elif source in _t_table_rvr:
+        source = "{}_t&&".format(source.replace("&&", ""))
+    elif source in _t_table_lvr:
+        source = "{}_t&".format(source.replace("&", ""))
+
+    elif source in SMTG_TUID_table or source in SMTG_TUID_table_ptr:
+        source = "SMTG_TUID"
+    elif source in SMTG_TUID_table_double_ptr:
+        source = "SMTG_TUID**".format(source.replace("**", ""))
+    elif source in SMTG_TUID_table_ptr:
+        source = "SMTG_TUID*".format(source.replace("*", ""))
+    elif source in SMTG_TUID_table_rvr:
+        source = "SMTG_TUID&&".format(source.replace("&&", ""))
+    elif source in SMTG_TUID_table_rvr:
+        source = "SMTG_TUID&".format(source.replace("&", ""))
+
+    elif source == "_iid":
+        source = "iid"
+    elif source in remove_table:
+        source = ""
+    if found_const:
+        source = "const {}".format(source)
+    #print("     ", source)
+    #print()
+    return source
 
 
 
@@ -433,11 +493,14 @@ if __name__ == '__main__':
     method_name = []
     method_return = []
     method_args = []
-    enum_table = []
+    enum_table_continuous = []
     struct_table = []
     struct_table_preparse = []
     struct_content = []
     struct_source = []
+    enum_name = []
+    enum_table = []
+    enum_source  = []
 
 
 # ----- Conversion arrays -----
@@ -476,38 +539,11 @@ if __name__ == '__main__':
     struct_table_preparse_lvr = []
     struct_table_preparse_rvr = []
 
-    for i in SMTG_table:
-        SMTG_table_ptr.append(i + "*")
-        SMTG_table_double_ptr.append(i + "**")
-        SMTG_table_lvr.append(i + "&")
-        SMTG_table_rvr.append(i + "&&")
-    for i in _t_table:
-        _t_table_ptr.append(i + "*")
-        _t_table_double_ptr.append(i + "**")
-        _t_table_lvr.append(i + "&")
-        _t_table_rvr.append(i + "&&")
-    for i in SMTG_TUID_table:
-        SMTG_TUID_table_ptr.append(i + "*")
-        SMTG_TUID_table_double_ptr.append(i + "**")
-        SMTG_TUID_table_ptr.append(i + "&")
-        SMTG_TUID_table_double_ptr.append(i + "&&")
 
 # ----- Parsing -----
     preparse_header(tu.cursor)
-    for i in interface_name_preparse:
-        interface_name_preparse_ptr.append(i + "*")
-        interface_name_preparse_double_ptr.append(i + "**")
-        interface_name_preparse_lvr.append(i + "&")
-        interface_name_preparse_rvr.append(i + "&&")
-    for i in struct_table_preparse:
-        struct_table_preparse_ptr.append(i + "*")
-        struct_table_preparse_double_ptr.append(i + "**")
-        struct_table_preparse_lvr.append(i + "&")
-        struct_table_preparse_rvr.append(i + "&&")
+    create_pointer_lists()
     parse_header(tu.cursor)
 
 # ----- Print -----
     print_conversion()
-    print(interface_name_preparse)
-    print(interface_name_preparse_ptr)
-
