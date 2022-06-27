@@ -191,14 +191,25 @@ def parse_enum(i):
                 #print(j.spelling)
                 #print("", j.enum_value)
                 enum_table[len(enum_name) - 1].append(j.spelling)
-                enum_table_continuous.append(j.spelling)
-                for k in j.get_children():
-                    if k.kind == k.kind.INTEGER_LITERAL or k.kind == k.kind.BINARY_OPERATOR:
-                        if array_to_string(get_values_in_extent(k), True) != "":
-                            enum_table[len(enum_name) - 1].append(array_to_string(get_values_in_extent(k), True))
-                            enum_table_continuous.append(array_to_string(get_values_in_extent(k), True))
-                    else:
-                        enum_table[len(enum_name) - 1].append("nil")
+                enum_table_l.append(j.spelling)
+                parse_enum_value(j)
+
+def parse_enum_value(i):
+    children = False
+    for j in i.get_children():
+        children = True
+        if j.kind == j.kind.INTEGER_LITERAL or j.kind == j.kind.BINARY_OPERATOR:
+            if array_to_string(get_values_in_extent(j), True) != "":
+                enum_table[len(enum_name) - 1].append(array_to_string(get_values_in_extent(j), True))
+                enum_table_r.append(array_to_string(get_values_in_extent(j), True))
+        elif j.kind == j.kind.UNEXPOSED_EXPR:
+            parse_enum_value(j)
+        else:
+            enum_table[len(enum_name) - 1].append("nil")
+            enum_table_r.append("nil")
+    if children == False:
+        enum_table[len(enum_name) - 1].append("nil")
+        enum_table_r.append("nil")
 
 
 # ----- print functions ------------------------------------------------------------------------------------------------
@@ -648,8 +659,8 @@ def convert(source):
     source = remove_spaces(source)
     source = normalise_namespace(source)
     #print("  ", source)
-    if source in enum_table_continuous and not source.isnumeric():
-        source = convert(enum_table_continuous[enum_table_continuous.index(source) + 1])
+    if source in enum_table_l and not source.isnumeric():
+        source = convert(enum_table_r[enum_table_l.index(source)])
 
     elif source in _t_table:
         source = "{}_t".format(source)
@@ -729,13 +740,14 @@ if __name__ == '__main__':
     method_name = []
     method_return = []
     method_args = []
-    enum_table_continuous = []
     struct_table = []
     struct_table_preparse = []
     struct_content = []
     struct_source = []
     enum_name = []
     enum_table = []
+    enum_table_l = []
+    enum_table_r = []
     enum_source = []
     typedef_name = []
     typedef_name_preparse = []
@@ -783,6 +795,8 @@ if __name__ == '__main__':
 # ----- Print -----
     if print_header:
         print_conversion()
+
+# ----- Write -----
     if write_header:
         header_path = "test_header.h"
         with open(header_path, 'w') as h:
