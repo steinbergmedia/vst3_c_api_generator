@@ -1,3 +1,4 @@
 # Default ignored files
 /build/
 z_rebuild.bat
+interface_convert_deprecated.py
