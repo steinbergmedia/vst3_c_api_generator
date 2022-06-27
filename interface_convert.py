@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
-import clang.cindex
-from clang.cindex import Config
+from clang.cindex import Config, Index, TokenGroup
 from optparse import OptionParser
 
 Config.set_library_path("venv/Lib/site-packages/clang/native")
@@ -73,7 +72,17 @@ def parsing(i):
     parse_interfaces(i)
     parse_enum(i)
     parse_structs(i)
+    parse_IID(i)
 
+def parse_IID(i):
+    if i.kind == i.kind.VAR_DECL and i.spelling.endswith("_iid"):
+        ID_tokens = get_tokens_from_extent(i)
+        ID_table[ID_tokens[2]] = [ID_tokens[4], ID_tokens[6], ID_tokens[8], ID_tokens[10]]
+
+def get_tokens_from_extent(cursor):
+    tu = cursor.translation_unit
+    extent = tu.get_extent(cursor.location.file.name, [cursor.extent.start.offset, cursor.extent.end.offset])
+    return [token.spelling for token in TokenGroup.get_tokens(tu, extent)]
 
 # ----- parse interfaces ---------------------------------------------------------------
 
@@ -166,7 +175,7 @@ def parse_structs(i):
 
                 for d in j.get_children():
                     if d.kind == d.kind.DECL_REF_EXPR:
-                        struct_args = convert(d.spelling)
+                        struct_args = d.spelling
 
                 if struct_args != "":
                     struct_content[len(struct_table) - 1].append(
@@ -376,6 +385,17 @@ def print_interface():
     print()
 
 def print_info():
+    print("Number of enums: {}".format(len(enum_name)))
+    for i in range(len(enum_name)):
+        if enum_name[i] != "":
+            print(" {}".format(enum_name[i]))
+    print()
+    print("Number of structs: {}".format(len(struct_table)))
+    for i in range(len(struct_table)):
+        print(" {}".format(struct_table[i]))
+    print()
+    print("Number of interfaces: {}".format(len(interface_name)))
+    print()
     for i in range(len(interface_name)):
         print("Interface {}: {}".format(i + 1, interface_name[i]))
         print(interface_source[i])
@@ -526,11 +546,13 @@ def write_interface():
         h.write("    SMTG_{}Vtbl* lpVtbl;\n".format(interface_name[i]))
         h.write("{} SMTG_{};\n".format("}", interface_name[i]))
         h.write("\n")
-        # h.write("SMTG_TUID SMTG_{}_iid = SMTG_INLINE_UID ({}, {}, {}, {});".format(interface_name[i],
-        #                                                                         ID_table[i][0],
-        #                                                                         ID_table[i][1],
-        #                                                                         ID_table[i][2],
-        #                                                                         ID_table[i][3]))
+        if interface_name[i] in ID_table:
+            interface_ids = ID_table[interface_name[i]]
+            h.write("SMTG_TUID SMTG_{}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
+                                                                                     interface_ids[0],
+                                                                                     interface_ids[1],
+                                                                                     interface_ids[2],
+                                                                                     interface_ids[3]))
         h.write("\n")
     h.write("\n")
 
@@ -613,10 +635,8 @@ def array_to_string(array, spaces):
     return string
 
 def get_values_in_extent(i):
-    values = []
-    for j in i.get_tokens():
-        values.append(j.spelling)
-    return values
+    return [t.spelling for t in i.get_tokens()]
+
 
 def create_pointer_lists():
     for i in SMTG_table:
@@ -659,7 +679,7 @@ def convert(source):
     source = remove_spaces(source)
     source = normalise_namespace(source)
     #print("  ", source)
-    if source in enum_table_l and not source.isnumeric():
+    if source in enum_table_l:
         source = convert(enum_table_r[enum_table_l.index(source)])
 
     elif source in _t_table:
@@ -720,7 +740,7 @@ if __name__ == '__main__':
 # ----- Establish Translation Unit -----
     parser = OptionParser("usage: {filename} [clang-args*]")
     (opts, filename) = parser.parse_args()
-    index = clang.cindex.Index.create()
+    index = Index.create()
     include_path = normalise_link(Path(sys.argv[1]).parents[2])
     tu = index.parse(normalise_link(filename[0]), ['-I', include_path, '-x', 'c++-header'])
     source_file = normalise_link(tu.spelling)
@@ -752,6 +772,9 @@ if __name__ == '__main__':
     typedef_name = []
     typedef_name_preparse = []
     typedef_return = []
+
+
+    ID_table = {}
 
 
 # ----- Conversion arrays -----
@@ -787,7 +810,7 @@ if __name__ == '__main__':
     struct_table_preparse_rvr = []
 
 
-# ----- Parsing -----
+# ----- Parse -----
     preparse_header(tu.cursor)
     create_pointer_lists()
     parse_header(tu.cursor)
