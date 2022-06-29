@@ -23,6 +23,7 @@ def preparse_namespace(i):
 
 def preparsing(i):
     preparse_interfaces(i)
+    preparse_enum(i)
     preparse_structs(i)
     parse_typedefs(i)
 
@@ -30,11 +31,19 @@ def preparsing(i):
 def preparse_interfaces(i):
     if i.kind == i.kind.CLASS_DECL:
         interface_name_preparse.append(normalise_namespace(i.spelling))
+        for j in i.get_children():
+            #parse_typedefs(j)
+            preparse_enum(j)
+
+def preparse_enum(i):
+    if i.kind == i.kind.ENUM_DECL:
+        enum_name_preparse.append(i.spelling)
 
 def preparse_structs(i):
     if i.kind == i.kind.STRUCT_DECL:
         r = 0
         for j in i.get_children():
+            preparse_enum(j)
             if j.kind == j.kind.FIELD_DECL:
                 if r == 0:
                     struct_table_preparse.append(i.spelling)
@@ -42,15 +51,15 @@ def preparse_structs(i):
 
 def parse_typedefs(i):
     if i.kind == i.kind.TYPEDEF_DECL:
-        if i.spelling not in _t_table and i.spelling not in SMTG_TUID_table:
+        if i.spelling not in SMTG_TUID_table:
             typedef_name_preparse.append(i.spelling)
-        typedef_name.append(convert(i.spelling))
 
-        typedef_return.append(len(typedef_name) - 1)
-        typedef_return[len(typedef_name) - 1] = []
-
-        for j in i.get_children():
-            typedef_return[len(typedef_name) - 1].append(convert(j.spelling))
+        if i.underlying_typedef_type.kind == i.type.kind.CONSTANTARRAY:
+            typedef_return.append(convert(i.underlying_typedef_type.element_type.spelling))
+            typedef_name.append("{}[{}]".format(convert(i.spelling), i.underlying_typedef_type.element_count))
+        else:
+            typedef_return.append(convert(i.underlying_typedef_type.spelling))
+            typedef_name.append(convert(i.spelling))
 
 
 # ----- parse ----------------------------------------------------------------------------------------------------------
@@ -87,80 +96,112 @@ def get_tokens_from_extent(cursor):
 # ----- parse interfaces ---------------------------------------------------------------
 
 def parse_interfaces(i):
-    if i.kind == i.kind.CLASS_DECL:
+    if i.kind == i.kind.CLASS_DECL and i.spelling not in blacklist:
+        children = list(i.get_children())
+        if not children:
+            return
         interface_source.append("Source: \"{}\", line {}".format(normalise_link(i.location.file), i.location.line))
         interface_description.append(i.brief_comment)
         interface_name.append(normalise_namespace(i.spelling))
+        position = len(interface_name) - 1
 
-        inherits_table.append(len(interface_name))
-        inherits_table[len(interface_name) - 1] = []
+        inherits_table.append("")
+        inherits_table[position] = []
 
-        method_name.append(len(interface_name))
-        method_name[len(interface_name) - 1] = []
+        method_name.append("")
+        method_name[position] = []
 
-        method_return.append(len(interface_name))
-        method_return[len(interface_name) - 1] = []
+        method_return.append("")
+        method_return[position] = []
 
-        method_args.append(len(interface_name))
-        method_args[len(interface_name) - 1] = []
+        method_args.append("")
+        method_args[position] = []
 
         method_count_local = 0
-        for j in i.get_children():
+        for j in children:
+            parse_enum(j)
             parse_inheritance(j)
-            method_count_local = parse_methods(j, method_count_local)
+            method_count_local = parse_methods(j, method_count_local, interface_name[-1])
 
 
 # ----- parse inheritances ---------------------------------------------------------------
 
 def parse_inheritance(j):
     if j.kind == j.kind.CXX_BASE_SPECIFIER:
-        for k in range(len(inherits_table[len(interface_name) - 1]) + 1):
+        position = len(interface_name) - 1
+        for k in range(len(inherits_table[position]) + 1):
             if normalise_namespace(j.type.spelling) in interface_name:
                 inherits_location = interface_name.index(normalise_namespace(j.type.spelling))
                 for n in range(len(inherits_table[inherits_location])):
-                    inherits_table[len(interface_name) - 1].append(inherits_table[inherits_location][n])
-        inherits_table[len(interface_name) - 1].append(normalise_namespace(j.type.spelling))
+                    inherits_table[position].append(inherits_table[inherits_location][n])
+        inherits_table[position].append(normalise_namespace(j.type.spelling))
 
 
 # ----- parse methods ---------------------------------------------------------------
 
-def parse_methods(j, method_count_local):
+def parse_methods(j, method_count_local, current_interface):
     if j.kind == j.kind.CXX_METHOD:
         method_count_local = method_count_local + 1
+        position = len(interface_name) - 1
 
-        method_args[len(interface_name) - 1].append(method_count_local)
-        method_args[len(interface_name) - 1][method_count_local - 1] = []
+        method_args[position].append("")
+        method_args[position][method_count_local - 1] = []
 
-        method_name[len(interface_name) - 1].append(j.spelling)
-        method_return[len(interface_name) - 1].append(convert(j.result_type.spelling))
+        method_name[position].append(j.spelling)
 
-        method_args_content = parse_method_arguments(j)
-        method_args[len(interface_name) - 1][method_count_local - 1].append("".join(method_args_content))
+        method_return[position].append(convert(get_underlying_type(j, j.result_type, current_interface)))
+        method_args_content = parse_method_arguments(j, current_interface)
+        method_args[position][method_count_local - 1].append("".join(method_args_content))
     return method_count_local
 
-def parse_method_arguments(j):
+def get_namespaces(source):
+    if "const " in source:
+        source = source.replace("const ", "")
+    return source.split("::")[:-1]
+
+
+def parse_method_arguments(j, current_interface):
     p = 0
     method_args_content = []
     for k in j.get_arguments():
         if p > 0:
             method_args_content.append(", ")
-        if k.type.kind == k.type.kind.POINTER:
-            method_args_content.append(convert(k.type.spelling))
-        elif k.type.kind == k.type.kind.LVALUEREFERENCE or k.type.kind == k.type.kind.RVALUEREFERENCE:
-            method_args_content.append(convert(k.type.spelling))
-        else:
-            method_args_content.append(convert(k.type.spelling))
+        method_args_content.append(convert(get_underlying_type(k, k.type, current_interface)))
         method_args_content.append(" ")
         method_args_content.append(convert(k.spelling))
         p = p + 1
     return method_args_content
 
+def get_underlying_type(cursor, type, current_interface):
+    if type.kind == type.kind.ENUM:
+        return type.spelling
+    namespaces = get_namespaces(type.spelling)
+    if namespaces and namespaces[-1] == current_interface:
+        if type.kind == type.kind.LVALUEREFERENCE:
+            result_type = list(cursor.get_children())[0].type
+            suffix = " &"
+        elif type.kind == type.kind.LVALUEREFERENCE or type.kind == type.kind.RVALUEREFERENCE:
+            result_type = list(cursor.get_children())[0].type
+            suffix = " &&"
+        elif type.kind == type.kind.POINTER:
+            result_type = type.get_pointee()
+            suffix = " *"
+            if result_type.kind == type.kind.POINTER:
+                result_type = result_type.get_pointee()
+                suffix += "*"
+        else:
+            result_type = type
+            suffix = ""
+        return result_type.get_declaration().underlying_typedef_type.spelling + suffix
+    else:
+        return type.spelling
 
 # ----- parse structs ---------------------------------------------------------------
 
 def parse_structs(i):
-    if i.kind == i.kind.STRUCT_DECL:
+    if i.kind == i.kind.STRUCT_DECL and i.spelling not in blacklist:
         r = 0
+        position = len(struct_table) - 1
         for j in i.get_children():
             parse_enum(j)
             if j.kind == j.kind.FIELD_DECL:
@@ -168,20 +209,24 @@ def parse_structs(i):
 
                 if r == 0:
                     struct_table.append(i.spelling)
+                    position = len(struct_table) - 1
                     struct_source.append("Source: \"{}\", line {}".format(normalise_link(i.location.file), i.location.line))
-                    struct_content.append(len(struct_table) + 1)
-                    struct_content[len(struct_table) - 1] = []
-                struct_return = convert(j.type.spelling)
+                    struct_content.append("")
+                    struct_content[position] = []
+                if j.type.kind == j.type.kind.CONSTANTARRAY:
+                    struct_return = convert(j.type.element_type.spelling)
+                else:
+                    struct_return = convert(j.type.spelling)
 
                 for d in j.get_children():
                     if d.kind == d.kind.DECL_REF_EXPR:
-                        struct_args = d.spelling
+                        struct_args = convert(d.spelling)
 
                 if struct_args != "":
-                    struct_content[len(struct_table) - 1].append(
+                    struct_content[position].append(
                         "{} {} [{}];".format(struct_return, j.spelling, struct_args))
                 else:
-                    struct_content[len(struct_table) - 1].append("{} {};".format(struct_return, j.spelling))
+                    struct_content[position].append("{} {};".format(struct_return, j.spelling))
 
                 r = r + 1
 
@@ -191,198 +236,227 @@ def parse_structs(i):
 def parse_enum(i):
     if i.kind == i.kind.ENUM_DECL:
         enum_name.append(i.spelling)
-        enum_table.append(len(enum_name) - 1)
-        enum_table[len(enum_name) - 1] = []
+        position = len(enum_name) - 1
+        enum_table.append("")
+        enum_table[position] = []
         enum_source.append("Source: {}, line {}".format(normalise_link(i.location.file), i.location.line))
 
         for j in i.get_children():
             if j.kind == j.kind.ENUM_CONSTANT_DECL:
-                #print(j.spelling)
-                #print("", j.enum_value)
-                enum_table[len(enum_name) - 1].append(j.spelling)
+                enum_table[position].append(j.spelling)
                 enum_table_l.append(j.spelling)
                 parse_enum_value(j)
 
 def parse_enum_value(i):
     children = False
+    position = len(enum_name) - 1
     for j in i.get_children():
         children = True
         if j.kind == j.kind.INTEGER_LITERAL or j.kind == j.kind.BINARY_OPERATOR:
             if array_to_string(get_values_in_extent(j), True) != "":
-                enum_table[len(enum_name) - 1].append(array_to_string(get_values_in_extent(j), True))
+                enum_table[position].append(array_to_string(get_values_in_extent(j), True))
                 enum_table_r.append(array_to_string(get_values_in_extent(j), True))
         elif j.kind == j.kind.UNEXPOSED_EXPR:
             parse_enum_value(j)
         else:
-            enum_table[len(enum_name) - 1].append("nil")
+            enum_table[position].append("nil")
             enum_table_r.append("nil")
     if children == False:
-        enum_table[len(enum_name) - 1].append("nil")
+        enum_table[position].append("nil")
         enum_table_r.append("nil")
 
 
-# ----- print functions ------------------------------------------------------------------------------------------------
+# ----- output to string ------------------------------------------------------------------------------------------------
 
-def print_standard():
-    print("// ----------------------------------------------------------------------------------------------------")
-    print("// Source file: {}".format(source_file))
-    print("// ----------------------------------------------------------------------------------------------------")
-    print()
-    print("#include <stdint.h>")
-    print()
-    print("#define SMTG_STDMETHODCALLTYPE")
-    print()
-    print("#if _WIN32 // COM_COMPATIBLE")
-    print("#define SMTG_INLINE_UID(l1, l2, l3, l4) \\")
-    print("{ \\")
-    print("	(int8_t)(((uint32_t)(l1) & 0x000000FF)      ), (int8_t)(((uint32_t)(l1) & 0x0000FF00) >>  8), \\")
-    print("	(int8_t)(((uint32_t)(l1) & 0x00FF0000) >> 16), (int8_t)(((uint32_t)(l1) & 0xFF000000) >> 24), \\")
-    print("	(int8_t)(((uint32_t)(l2) & 0x00FF0000) >> 16), (int8_t)(((uint32_t)(l2) & 0xFF000000) >> 24), \\")
-    print("	(int8_t)(((uint32_t)(l2) & 0x000000FF)      ), (int8_t)(((uint32_t)(l2) & 0x0000FF00) >>  8), \\")
-    print("	(int8_t)(((uint32_t)(l3) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l3) & 0x00FF0000) >> 16), \\")
-    print("	(int8_t)(((uint32_t)(l3) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l3) & 0x000000FF)      ), \\")
-    print("	(int8_t)(((uint32_t)(l4) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l4) & 0x00FF0000) >> 16), \\")
-    print("	(int8_t)(((uint32_t)(l4) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l4) & 0x000000FF)      )  \\")
-    print("}")
-    print("#else")
-    print("#define SMTG_INLINE_UID(l1, l2, l3, l4) \\")
-    print("{ \\")
-    print("	(int8_t)(((uint32_t)(l1) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l1) & 0x00FF0000) >> 16), \\")
-    print("	(int8_t)(((uint32_t)(l1) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l1) & 0x000000FF)      ), \\")
-    print("	(int8_t)(((uint32_t)(l2) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l2) & 0x00FF0000) >> 16), \\")
-    print("	(int8_t)(((uint32_t)(l2) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l2) & 0x000000FF)      ), \\")
-    print("	(int8_t)(((uint32_t)(l3) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l3) & 0x00FF0000) >> 16), \\")
-    print("	(int8_t)(((uint32_t)(l3) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l3) & 0x000000FF)      ), \\")
-    print("	(int8_t)(((uint32_t)(l4) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l4) & 0x00FF0000) >> 16), \\")
-    print("	(int8_t)(((uint32_t)(l4) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l4) & 0x000000FF)      )  \\")
-    print("}")
-    print("#endif")
-    print()
-    print("// ----------------------------------------------------------------------------------------------------")
-    print("// Typedefs")
-    print("// ----------------------------------------------------------------------------------------------------")
-    print()
-    print("typedef uint8_t SMTG_TUID[16];")
-    print("typedef uint_least16_t SMTG_char16;")
-    print("typedef uint8_t SMTG_char8;")
-    print_typedefs()
-    print()
-    print()
+def generate_standard():
+    result = "/*----------------------------------------------------------------------------------------------------------------------\n"
+    result += "Source file: {}\n".format(source_file)
+    result += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    result += "\n"
+    result += "#include <stdint.h>\n"
+    result += "\n"
+    result += "#define SMTG_STDMETHODCALLTYPE\n"
+    result += "\n"
+    result += "#if _WIN32 /* COM_COMPATIBLE */\n"
+    result += "#define SMTG_INLINE_UID(l1, l2, l3, l4) \\\n"
+    result += "{ \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l1) & 0x000000FF)      ), (SMTG_int8)(((SMTG_uint32)(l1) & 0x0000FF00) >>  8), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l1) & 0x00FF0000) >> 16), (SMTG_int8)(((SMTG_uint32)(l1) & 0xFF000000) >> 24), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l2) & 0x00FF0000) >> 16), (SMTG_int8)(((SMTG_uint32)(l2) & 0xFF000000) >> 24), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l2) & 0x000000FF)      ), (SMTG_int8)(((SMTG_uint32)(l2) & 0x0000FF00) >>  8), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l3) & 0xFF000000) >> 24), (SMTG_int8)(((SMTG_uint32)(l3) & 0x00FF0000) >> 16), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l3) & 0x0000FF00) >>  8), (SMTG_int8)(((SMTG_uint32)(l3) & 0x000000FF)      ), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l4) & 0xFF000000) >> 24), (SMTG_int8)(((SMTG_uint32)(l4) & 0x00FF0000) >> 16), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l4) & 0x0000FF00) >>  8), (SMTG_int8)(((SMTG_uint32)(l4) & 0x000000FF)      )  \\\n"
+    result += "}\n"
+    result += "#else\n"
+    result += "#define SMTG_INLINE_UID(l1, l2, l3, l4) \\\n"
+    result += "{ \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l1) & 0xFF000000) >> 24), (SMTG_int8)(((SMTG_uint32)(l1) & 0x00FF0000) >> 16), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l1) & 0x0000FF00) >>  8), (SMTG_int8)(((SMTG_uint32)(l1) & 0x000000FF)      ), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l2) & 0xFF000000) >> 24), (SMTG_int8)(((SMTG_uint32)(l2) & 0x00FF0000) >> 16), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l2) & 0x0000FF00) >>  8), (SMTG_int8)(((SMTG_uint32)(l2) & 0x000000FF)      ), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l3) & 0xFF000000) >> 24), (SMTG_int8)(((SMTG_uint32)(l3) & 0x00FF0000) >> 16), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l3) & 0x0000FF00) >>  8), (SMTG_int8)(((SMTG_uint32)(l3) & 0x000000FF)      ), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l4) & 0xFF000000) >> 24), (SMTG_int8)(((SMTG_uint32)(l4) & 0x00FF0000) >> 16), \\\n"
+    result += "	(SMTG_int8)(((SMTG_uint32)(l4) & 0x0000FF00) >>  8), (SMTG_int8)(((SMTG_uint32)(l4) & 0x000000FF)      )  \\\n"
+    result += "}\n"
+    result += "#endif\n"
+    result += "\n"
+    result += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    result += "Typedefs\n"
+    result += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    result += "\n"
+    result += generate_typedefs()
+    result += "\n"
+    result += "\n"
+    return result
 
-def print_typedefs():
+def generate_typedefs():
+    result = ""
     for i in range(len(typedef_name)):
-        if typedef_return[i] != []:
-            print("typedef {} {};".format(typedef_return[i][0], typedef_name[i]))
+        if typedef_return[i] != [] and typedef_name[i] not in blacklist:
+            result += "typedef {} {};\n".format(typedef_return[i], typedef_name[i])
+    return result
 
-def print_interface_forward():
-    print("// ----------------------------------------------------------------------------------------------------")
-    print("// Interface forward declarations")
-    print("// ----------------------------------------------------------------------------------------------------")
-    print()
+def generate_interface_forward():
+    result = ""
+    result += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    result += "Interface forward declarations\n"
+    result += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    result += "\n"
     for i in range(len(interface_name)):
-        print("typedef struct {};".format(interface_name[i]))
-    print()
-    print()
+        result += "typedef struct {};\n".format(convert(interface_name[i]))
+    result += "\n"
+    for i in range(len(struct_table)):
+        result += "typedef struct {};\n".format(convert(struct_table[i]))
+    result += "\n"
+    result += "\n"
+    return result
 
-def print_enums():
-    print("// ----------------------------------------------------------------------------------------------------")
-    print("// Enums")
-    print("// ----------------------------------------------------------------------------------------------------")
-    print()
+def generate_enums():
+    result = ""
+    result += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    result += "Enums\n"
+    result += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    result += "\n"
     for i in range(len(enum_table)):
-        print("// ----------------------------------------------------------------------------------------------------")
-        print("// {}".format(enum_source[i]))
-        print()
         if enum_name[i] == "":
-            print("enum")
-        else:
-            print("enum SMTG_{}". format(enum_name[i]))
-        print("{")
+            continue
+        result += "/*----------------------------------------------------------------------------------------------------------------------\n"
+        result += "{} */\n".format(enum_source[i])
+        result += "\n"
+        result += "enum SMTG_{}\n".format(enum_name[i])
+        result += "{\n"
         for j in range(int(len(enum_table[i]) / 2)):
             if j < int(len(enum_table[i]) / 2) - 1:
                 if enum_table[i][2 * j + 1] != "nil":
-                    print("{} = {},".format(enum_table[i][2 * j], enum_table[i][2 * j + 1]))
+                    result += "{} = {},\n".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
                 else:
-                    print("{},".format(enum_table[i][2 * j]))
+                    result += "{},\n".format(enum_table[i][2 * j])
             else:
                 if enum_table[i][2 * j + 1] != "nil":
-                    print("{} = {}".format(enum_table[i][2 * j], enum_table[i][2 * j + 1]))
+                    result += "{} = {}\n".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
                 else:
-                    print("{}".format(enum_table[i][2 * j]))
-        print("};")
-        print()
-    print()
+                    result += "{}\n".format(enum_table[i][2 * j])
+        result += "};\n"
+        result += "\n"
+    result += "\n"
+    return result
 
-def print_structs():
-    print("// ----------------------------------------------------------------------------------------------------")
-    print("// Structs")
-    print("// ----------------------------------------------------------------------------------------------------")
-    print()
+def generate_structs():
+    result = ""
+    result += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    result += "Structs\n"
+    result += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    result += "\n"
     for i in range(len(struct_table)):
-        print("// ----------------------------------------------------------------------------------------------------")
-        print("// {}".format(struct_source[i]))
-        print()
-        print("struct SMTG_{} {}".format(struct_table[i], "{"))
+        result += "/*----------------------------------------------------------------------------------------------------------------------\n"
+        result += "{} */\n".format(struct_source[i])
+        result += "\n"
+        result += "struct SMTG_{} {}\n".format(struct_table[i], "{")
         for j in range(len(struct_content[i])):
-            print("    {}".format(struct_content[i][j]))
-        print("};")
-        print()
-    print()
+            result += "    {}\n".format(struct_content[i][j])
+        result += "};\n"
+        result += "\n"
+    result += "\n"
+    return result
 
-def print_methods(i):
+def generate_interface():
+    result = ""
+    result += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    result += "Interfaces\n"
+    result += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    result += "\n"
+    for i in range(len(interface_name)):
+        result += "/*----------------------------------------------------------------------------------------------------------------------\n"
+        #result += "Steinberg::{}\n".format(interface_name[i])
+        result += "{} */\n".format(interface_source[i])
+        result += "\n"
+        result += "typedef struct SMTG_{}Vtbl\n".format(interface_name[i])
+        result += "{\n"
+        result += generate_methods(i)
+        result += "{} SMTG_{}Vtbl;\n".format("}", interface_name[i])
+        result += "\n"
+        result += "typedef struct SMTG_{}\n".format(interface_name[i])
+        result += "{\n"
+        result += "    SMTG_{}Vtbl* lpVtbl;\n".format(interface_name[i])
+        result += "{} SMTG_{};\n".format("}", interface_name[i])
+        result += "\n"
+        if interface_name[i] in ID_table:
+            interface_ids = ID_table[interface_name[i]]
+            result += "/*----------------------------------------------------------------------------------------------------------------------\n"
+            result += "SMTG_TUID SMTG_{}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
+                                                                                     interface_ids[0],
+                                                                                     interface_ids[1],
+                                                                                     interface_ids[2],
+                                                                                     interface_ids[3])
+            result += "----------------------------------------------------------------------------------------------------------------------*/\n"
+        result += "\n"
+    result += "\n"
+    return result
+
+def generate_methods(i):
+    result = ""
     methods_location = 0
     for k in range(len(inherits_table[i])):
         if inherits_table[i][k] in interface_name:
             methods_location = interface_name.index(inherits_table[i][k])
-        print("    // methods derived from \"{}\":".format(inherits_table[i][k]))
+        result += "    /* methods derived from \"{}\": */\n".format(inherits_table[i][k])
         for j in range(len(method_name[methods_location])):
             if method_args[methods_location][j][0] == "":
-                print("    virtual {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);".format(method_return[methods_location][j],
-                                                                                         method_name[methods_location][j]))
+                result += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\n".format(
+                    method_return[methods_location][j],
+                    method_name[methods_location][j])
             elif method_args[methods_location][j][0] != "":
 
-                print("    virtual {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});".format(method_return[methods_location][j],
-                                                                                             method_name[methods_location][j],
-                                                                                             method_args[methods_location][j][0]))
-        print()
-    print("    // methods defined in \"{}\":".format(interface_name[i]))
+                result += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});\n".format(
+                    method_return[methods_location][j],
+                    method_name[methods_location][j],
+                    method_args[methods_location][j][0])
+        result += "\n"
+    result += "    /* methods defined in \"{}\": */\n".format(interface_name[i])
     for j in range(len(method_name[i])):
         if method_args[i][j][0] == "":
-            print("    virtual {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);".format(method_return[i][j],
-                                                                                           method_name[i][j]))
+            result += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\n".format(method_return[i][j],
+                                                                                              method_name[i][j])
         elif method_args[i][j][0] != "":
-            print("    virtual {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});".format(method_return[i][j],
-                                                                                                   method_name[i][j],
-                                                                                                   method_args[i][j][0]))
-    print()
+            result += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});\n".format(method_return[i][j],
+                                                                                                method_name[i][j],
+                                                                                                method_args[i][j][
+                                                                                                    0])
+    result += "\n"
+    return result
 
-def print_interface():
-    print("// ----------------------------------------------------------------------------------------------------")
-    print("// Interfaces")
-    print("// ----------------------------------------------------------------------------------------------------")
-    print()
-    for i in range(len(interface_name)):
-        print("// ----------------------------------------------------------------------------------------------------")
-        #print("// Steinberg::{}".format(interface_name[i]))
-        print("// {}".format(interface_source[i]))
-        print()
-        print("typedef struct SMTG_{}Vtbl".format(interface_name[i]))
-        print("{")
-        print_methods(i)
-        print("}", "SMTG_{}Vtbl;".format(interface_name[i]))
-        print()
-        print("typedef struct SMTG_{}".format(interface_name[i]))
-        print("{")
-        print("    SMTG_{}Vtbl* lpVtbl;".format(interface_name[i]))
-        print("}", "SMTG_{};".format(interface_name[i]))
-        print()
-        #print("SMTG_TUID SMTG_{}_iid = SMTG_INLINE_UID ({}, {}, {}, {});".format(interface_name[i],
-        #                                                                         ID_table[i][0],
-        #                                                                         ID_table[i][1],
-        #                                                                         ID_table[i][2],
-        #                                                                         ID_table[i][3]))
-        print()
-    print()
+
+def generate_conversion():
+    result = generate_standard()
+    result += generate_interface_forward()
+    result += generate_enums()
+    result += generate_structs()
+    result += generate_interface()
+    return result
+
 
 def print_info():
     print("Number of enums: {}".format(len(enum_name)))
@@ -409,191 +483,6 @@ def print_info():
         print()
     print()
 
-def print_conversion():
-    print_standard()
-    print_interface_forward()
-    print_enums()
-    print_structs()
-    print_interface()
-    print_info()
-
-
-# ----- write functions ------------------------------------------------------------------------------------------------
-
-def write_standard():
-    h.write("/*----------------------------------------------------------------------------------------------------------------------\n")
-    h.write("Source file: {}\n".format(source_file))
-    h.write("----------------------------------------------------------------------------------------------------------------------*/\n")
-    h.write("\n")
-    h.write("#include <stdint.h>\n")
-    h.write("\n")
-    h.write("#define SMTG_STDMETHODCALLTYPE\n")
-    h.write("\n")
-    h.write("#if _WIN32 /* COM_COMPATIBLE */\n")
-    h.write("#define SMTG_INLINE_UID(l1, l2, l3, l4) \\\n")
-    h.write("{ \\\n")
-    h.write("	(int8_t)(((uint32_t)(l1) & 0x000000FF)      ), (int8_t)(((uint32_t)(l1) & 0x0000FF00) >>  8), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l1) & 0x00FF0000) >> 16), (int8_t)(((uint32_t)(l1) & 0xFF000000) >> 24), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l2) & 0x00FF0000) >> 16), (int8_t)(((uint32_t)(l2) & 0xFF000000) >> 24), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l2) & 0x000000FF)      ), (int8_t)(((uint32_t)(l2) & 0x0000FF00) >>  8), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l3) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l3) & 0x00FF0000) >> 16), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l3) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l3) & 0x000000FF)      ), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l4) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l4) & 0x00FF0000) >> 16), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l4) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l4) & 0x000000FF)      )  \\\n")
-    h.write("}\n")
-    h.write("#else\n")
-    h.write("#define SMTG_INLINE_UID(l1, l2, l3, l4) \\\n")
-    h.write("{ \\\n")
-    h.write("	(int8_t)(((uint32_t)(l1) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l1) & 0x00FF0000) >> 16), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l1) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l1) & 0x000000FF)      ), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l2) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l2) & 0x00FF0000) >> 16), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l2) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l2) & 0x000000FF)      ), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l3) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l3) & 0x00FF0000) >> 16), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l3) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l3) & 0x000000FF)      ), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l4) & 0xFF000000) >> 24), (int8_t)(((uint32_t)(l4) & 0x00FF0000) >> 16), \\\n")
-    h.write("	(int8_t)(((uint32_t)(l4) & 0x0000FF00) >>  8), (int8_t)(((uint32_t)(l4) & 0x000000FF)      )  \\\n")
-    h.write("}\n")
-    h.write("#endif\n")
-    h.write("\n")
-    h.write("/*----------------------------------------------------------------------------------------------------------------------\n")
-    h.write("Typedefs\n")
-    h.write("----------------------------------------------------------------------------------------------------------------------*/\n")
-    h.write("\n")
-    h.write("typedef uint8_t SMTG_TUID[16];\n")
-    h.write("typedef uint_least16_t SMTG_char16;\n")
-    h.write("typedef uint8_t SMTG_char8;\n")
-    write_typedefs()
-    h.write("\n")
-    h.write("\n")
-
-def write_typedefs():
-    for i in range(len(typedef_name)):
-        if typedef_return[i] != []:
-            h.write("typedef {} {};\n".format(typedef_return[i][0], typedef_name[i]))
-
-def write_interface_forward():
-    h.write("/*----------------------------------------------------------------------------------------------------------------------\n")
-    h.write("Interface forward declarations\n")
-    h.write("----------------------------------------------------------------------------------------------------------------------*/\n")
-    h.write("\n")
-    for i in range(len(interface_name)):
-        h.write("typedef struct {};\n".format(interface_name[i]))
-    h.write("\n")
-    h.write("\n")
-
-def write_enums():
-    h.write("/*----------------------------------------------------------------------------------------------------------------------\n")
-    h.write("Enums\n")
-    h.write("----------------------------------------------------------------------------------------------------------------------*/\n")
-    h.write("\n")
-    for i in range(len(enum_table)):
-        h.write("/*----------------------------------------------------------------------------------------------------------------------\n")
-        h.write("{} */\n".format(enum_source[i]))
-        h.write("\n")
-        if enum_name[i] == "":
-            h.write("enum\n")
-        else:
-            h.write("enum SMTG_{}\n".format(enum_name[i]))
-        h.write("{\n")
-        for j in range(int(len(enum_table[i]) / 2)):
-            if j < int(len(enum_table[i]) / 2) - 1:
-                if enum_table[i][2 * j + 1] != "nil":
-                    h.write("{} = {},\n".format(enum_table[i][2 * j], enum_table[i][2 * j + 1]))
-                else:
-                    h.write("{},\n".format(enum_table[i][2 * j]))
-            else:
-                if enum_table[i][2 * j + 1] != "nil":
-                    h.write("{} = {}\n".format(enum_table[i][2 * j], enum_table[i][2 * j + 1]))
-                else:
-                    h.write("{}\n".format(enum_table[i][2 * j]))
-        h.write("};\n")
-        h.write("\n")
-    h.write("\n")
-
-def write_structs():
-    h.write("/*----------------------------------------------------------------------------------------------------------------------\n")
-    h.write("Structs\n")
-    h.write("----------------------------------------------------------------------------------------------------------------------*/\n")
-    h.write("\n")
-    for i in range(len(struct_table)):
-        h.write("/*----------------------------------------------------------------------------------------------------------------------\n")
-        h.write("{} */\n".format(struct_source[i]))
-        h.write("\n")
-        h.write("struct SMTG_{} {}\n".format(struct_table[i], "{"))
-        for j in range(len(struct_content[i])):
-            h.write("    {}\n".format(struct_content[i][j]))
-        h.write("};\n")
-        h.write("\n")
-    h.write("\n")
-
-def write_interface():
-    h.write("/*----------------------------------------------------------------------------------------------------------------------\n")
-    h.write("Interfaces\n")
-    h.write("----------------------------------------------------------------------------------------------------------------------*/\n")
-    h.write("\n")
-    for i in range(len(interface_name)):
-        h.write("/*----------------------------------------------------------------------------------------------------------------------\n")
-        #h.write("Steinberg::{}\n".format(interface_name[i]))
-        h.write("{} */\n".format(interface_source[i]))
-        h.write("\n")
-        h.write("typedef struct SMTG_{}Vtbl\n".format(interface_name[i]))
-        h.write("{\n")
-        write_methods(i)
-        h.write("{} SMTG_{}Vtbl;\n".format("}", interface_name[i]))
-        h.write("\n")
-        h.write("typedef struct SMTG_{}\n".format(interface_name[i]))
-        h.write("{\n")
-        h.write("    SMTG_{}Vtbl* lpVtbl;\n".format(interface_name[i]))
-        h.write("{} SMTG_{};\n".format("}", interface_name[i]))
-        h.write("\n")
-        if interface_name[i] in ID_table:
-            interface_ids = ID_table[interface_name[i]]
-            h.write("SMTG_TUID SMTG_{}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
-                                                                                     interface_ids[0],
-                                                                                     interface_ids[1],
-                                                                                     interface_ids[2],
-                                                                                     interface_ids[3]))
-        h.write("\n")
-    h.write("\n")
-
-def write_methods(i):
-    methods_location = 0
-    for k in range(len(inherits_table[i])):
-        if inherits_table[i][k] in interface_name:
-            methods_location = interface_name.index(inherits_table[i][k])
-        h.write("    /* methods derived from \"{}\": */\n".format(inherits_table[i][k]))
-        for j in range(len(method_name[methods_location])):
-            if method_args[methods_location][j][0] == "":
-                h.write("    virtual {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\n".format(
-                    method_return[methods_location][j],
-                    method_name[methods_location][j]))
-            elif method_args[methods_location][j][0] != "":
-
-                h.write("    virtual {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});\n".format(
-                    method_return[methods_location][j],
-                    method_name[methods_location][j],
-                    method_args[methods_location][j][0]))
-        h.write("\n")
-    h.write("    /* methods defined in \"{}\": */\n".format(interface_name[i]))
-    for j in range(len(method_name[i])):
-        if method_args[i][j][0] == "":
-            h.write("    virtual {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\n".format(method_return[i][j],
-                                                                                              method_name[i][j]))
-        elif method_args[i][j][0] != "":
-            h.write("    virtual {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});\n".format(method_return[i][j],
-                                                                                                method_name[i][j],
-                                                                                                method_args[i][j][
-                                                                                                    0]))
-    h.write("\n")
-
-
-def write_conversion():
-    write_standard()
-    write_interface_forward()
-    write_enums()
-    write_structs()
-    write_interface()
-
 
 # ----- utility functions ----------------------------------------------------------------------------------------------
 
@@ -612,10 +501,11 @@ def normalise_namespace(source):
     return source
 
 def normalise_args(source):
-    source = str(source)
+    brackets = ""
     if "[" in source:
+        brackets = source[source.index("["):]
         source = source[:source.index("[")]
-    return source
+    return source, brackets
 
 def remove_spaces(source):
     source = str(source)
@@ -638,91 +528,75 @@ def get_values_in_extent(i):
     return [t.spelling for t in i.get_tokens()]
 
 
-def create_pointer_lists():
-    for i in SMTG_table:
-        SMTG_table_ptr.append(i + "*")
-        SMTG_table_double_ptr.append(i + "**")
-        SMTG_table_lvr.append(i + "&")
-        SMTG_table_rvr.append(i + "&&")
-    for i in _t_table:
-        _t_table_ptr.append(i + "*")
-        _t_table_double_ptr.append(i + "**")
-        _t_table_lvr.append(i + "&")
-        _t_table_rvr.append(i + "&&")
-    for i in SMTG_TUID_table:
-        SMTG_TUID_table_ptr.append(i + "*")
-        SMTG_TUID_table_double_ptr.append(i + "**")
-        SMTG_TUID_table_ptr.append(i + "&")
-        SMTG_TUID_table_double_ptr.append(i + "&&")
-    for i in interface_name_preparse:
-        interface_name_preparse_ptr.append(i + "*")
-        interface_name_preparse_double_ptr.append(i + "**")
-        interface_name_preparse_lvr.append(i + "&")
-        interface_name_preparse_rvr.append(i + "&&")
-    for i in struct_table_preparse:
-        struct_table_preparse_ptr.append(i + "*")
-        struct_table_preparse_double_ptr.append(i + "**")
-        struct_table_preparse_lvr.append(i + "&")
-        struct_table_preparse_rvr.append(i + "&&")
-
-
 # ----- conversion function --------------------------------------------------------------------------------------------
 
 def convert(source):
     found_const = False
+    found_unsigned = False
+    found_doubleptr = False
+    found_ptr = False
+    found_rvr = False
+    found_lvr = False
+    found_ptr_lvr = False
+
     source = str(source)
-    #print(source)
+    print(source)
+
     if "const " in source:
         source = source.replace("const ", "")
         found_const = True
-    source = normalise_args(source)
-    source = remove_spaces(source)
+    if "unsigned" in source:
+        source = source.replace("unsigned ", "")
+        found_unsigned = True
+    if "*&" in source:
+        source = source.replace(" *&", "")
+        found_ptr_lvr = True
+    elif "**" in source:
+        source = source.replace(" **", "")
+        found_doubleptr = True
+    elif "*" in source:
+        source = source.replace(" *", "")
+        found_ptr = True
+    elif "&&" in source:
+        source = source.replace(" &&", "")
+        found_rvr = True
+    elif "&" in source:
+        source = source.replace(" &", "")
+        found_lvr = True
+    source, brackets = normalise_args(source)
     source = normalise_namespace(source)
-    #print("  ", source)
+    print("  ", source)
+
     if source in enum_table_l:
         source = convert(enum_table_r[enum_table_l.index(source)])
-
-    elif source in _t_table:
-        source = "{}_t".format(source)
-    elif source in _t_table_double_ptr:
-        source = "{}_t**".format(source.replace("**", ""))
-    elif source in _t_table_ptr:
-        source = "{}_t*".format(source.replace("*", ""))
-    elif source in _t_table_rvr:
-        source = "{}_t&&".format(source.replace("&&", ""))
-    elif source in _t_table_lvr:
-        source = "{}_t&".format(source.replace("&", ""))
-
-    elif source in SMTG_TUID_table or source in SMTG_TUID_table_ptr:
+    elif source in SMTG_TUID_table:
         source = "SMTG_TUID"
-    elif source in SMTG_TUID_table_double_ptr:
-        source = "SMTG_TUID**".format(source.replace("**", ""))
-    elif source in SMTG_TUID_table_ptr:
-        source = "SMTG_TUID*".format(source.replace("*", ""))
-    elif source in SMTG_TUID_table_rvr:
-        source = "SMTG_TUID&&".format(source.replace("&&", ""))
-    elif source in SMTG_TUID_table_rvr:
-        source = "SMTG_TUID&".format(source.replace("&", ""))
-
-    elif source in SMTG_table or source in SMTG_table_ptr or source in struct_table_preparse or source in interface_name_preparse or source in typedef_name_preparse:
+    elif source in struct_table_preparse or source in interface_name_preparse or\
+        source in typedef_name_preparse or source in enum_name_preparse:
         source = "SMTG_{}".format(source)
-    elif source in SMTG_table_double_ptr or source in struct_table_preparse_double_ptr or source in interface_name_preparse_double_ptr:
-        source = "SMTG_{}**".format(source.replace("**", ""))
-    elif source in SMTG_table_ptr or source in struct_table_preparse_ptr or source in interface_name_preparse_ptr:
-        source = "SMTG_{}*".format(source.replace("*", ""))
-    elif source in SMTG_table_rvr or source in struct_table_preparse_rvr or source in interface_name_preparse_rvr:
-        source = "SMTG_{}&&".format(source.replace("&&", ""))
-    elif source in SMTG_table_lvr or source in struct_table_preparse_lvr or source in interface_name_preparse_lvr:
-        source = "SMTG_{}&".format(source.replace("&", ""))
-
     elif source == "_iid":
         source = "iid"
     elif source in remove_table:
         source = ""
+
+    source = source + brackets
+
+    if found_unsigned:
+        source = "unsigned {}".format(source)
     if found_const:
         source = "const {}".format(source)
-    #print("     ", source)
-    #print()
+    if found_doubleptr:
+        source = "{}**".format(source)
+    if found_ptr:
+        source = "{}*".format(source)
+    if found_rvr:
+        source = "{}&&".format(source)
+    if found_lvr:
+        source = "{}&".format(source)
+    if found_ptr_lvr:
+        source = "{}*&".format(source)
+    print("     ", source)
+    print()
     return source
 
 
@@ -751,76 +625,56 @@ if __name__ == '__main__':
     interface_name = []
     interface_name_preparse = []
     inherits_table = []
-    tu_table_temp = []
-    tu_table_spelling = []
-    tu_table = []
+
     includes_list = []
     includes_table = []
     includes_table_preparse = []
+
     method_name = []
     method_return = []
     method_args = []
+
     struct_table = []
     struct_table_preparse = []
     struct_content = []
     struct_source = []
+
     enum_name = []
+    enum_name_preparse = []
     enum_table = []
     enum_table_l = []
     enum_table_r = []
     enum_source = []
+
     typedef_name = []
     typedef_name_preparse = []
     typedef_return = []
+    typedef_interface_name = []
+    typedef_interface_return = []
 
 
     ID_table = {}
 
 
-# ----- Conversion arrays -----
-    data_types = ["int32", "char8", "char16", "TUID", "uint32", "ParamID", "String128", "ParamValue", "UnitID"]
+# ----- Conversion helper arrays -----
+    blacklist = ["FUID", "FReleaser", "SMTG_Item"]
     remove_table = ["/*out*/", "/*in*/"]
-    SMTG_table = ["char8", "char16", "char32", "char64", "char128"]
-    _t_table = ["int8", "int16", "int32", "int64", "int128", "uint8", "uint16", "uint32", "uint64", "uint128"]
     SMTG_TUID_table = ["FIDString", "TUID"]
 
-    SMTG_table_ptr = []
-    SMTG_table_double_ptr = []
-    SMTG_table_lvr = []
-    SMTG_table_rvr = []
-
-    _t_table_ptr = []
-    _t_table_double_ptr = []
-    _t_table_lvr = []
-    _t_table_rvr = []
-
-    SMTG_TUID_table_ptr = []
-    SMTG_TUID_table_double_ptr = []
-    SMTG_TUID_table_lvr = []
-    SMTG_TUID_table_rvr = []
-
-    interface_name_preparse_ptr = []
-    interface_name_preparse_double_ptr = []
-    interface_name_preparse_lvr = []
-    interface_name_preparse_rvr = []
-
-    struct_table_preparse_ptr = []
-    struct_table_preparse_double_ptr = []
-    struct_table_preparse_lvr = []
-    struct_table_preparse_rvr = []
 
 
 # ----- Parse -----
     preparse_header(tu.cursor)
-    create_pointer_lists()
     parse_header(tu.cursor)
-
-# ----- Print -----
-    if print_header:
-        print_conversion()
+    header_content = generate_conversion()
 
 # ----- Write -----
     if write_header:
         header_path = "test_header.h"
-        with open(header_path, 'w') as h:
-            write_conversion()
+        with open(header_path, 'w') as f:
+            f.write(header_content)
+
+# ----- Print -----
+    if print_header:
+        print(header_content)
+        print_info()

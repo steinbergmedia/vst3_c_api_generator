@@ -28,6 +28,9 @@ if print_header_file:
     print()
     print("#pragma once")
     print()
+    print("#include \"pluginterfaces/gui/iplugview.h\"")
+    print("#include \"pluginterfaces/gui/iplugviewcontentscalesupport.h\"")
+    print("#include \"pluginterfaces/base/ibstream.h\"")
     for i in range(len(header_list)):
         print("#include \"pluginterfaces/vst/{}\"".format(header_list[i]))
     print()
@@ -53,5 +56,8 @@ if create_header_file:
         h.write("\n")
         h.write("#pragma once\n")
         h.write("\n")
+        h.write("#include \"pluginterfaces/gui/iplugview.h\"\n")
+        h.write("#include \"pluginterfaces/gui/iplugviewcontentscalesupport.h\"\n")
+        h.write("#include \"pluginterfaces/base/ibstream.h\"\n")
         for i in range(len(header_list)):
             h.write("#include \"pluginterfaces/vst/{}\"\n".format(header_list[i]))
