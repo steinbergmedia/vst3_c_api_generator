@@ -1,9 +1,10 @@
 import sys
-from pathlib import Path
-from clang.cindex import Config, Index, TokenGroup
 from optparse import OptionParser
+from pathlib import Path
 
-Config.set_library_path("venv/Lib/site-packages/clang/native")
+from clang.cindex import Index, TokenGroup
+
+from clang_helpers import set_library_path
 
 
 # ----- preparse -------------------------------------------------------------------------------------------------------
@@ -617,6 +618,10 @@ if __name__ == '__main__':
 # ----- Establish Translation Unit -----
     parser = OptionParser("usage: {filename} [clang-args*]")
     (opts, filename) = parser.parse_args()
+    if not filename:
+        print ('No filename was specified!')
+        exit(1)
+    set_library_path()
     index = Index.create()
     include_path = normalise_link(Path(sys.argv[1]).parents[2])
     tu = index.parse(normalise_link(filename[0]), ['-I', include_path, '-x', 'c++-header'])
