@@ -20,20 +20,26 @@ project(GeneratorTest)
 add_executable(GeneratorTest main.cpp)
 target_include_directories(GeneratorTest PRIVATE ${CMAKE_BINARY_DIR})
 
-execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${CMAKE_CURRENT_SOURCE_DIR}/build/venv)
+set(venv_dir ${CMAKE_CURRENT_SOURCE_DIR}/build/venv)
+execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${venv_dir})
+if(APPLE)
+  set(venv_python_exe ${venv_dir}/bin/python)
+elseif(WIN32)
+  set(venv_python_exe ${venv_dir}/Scripts/python.exe)
+endif()
 
-execute_process(COMMAND venv/Scripts/python.exe -m pip install --upgrade pip)
+execute_process(COMMAND ${venv_python_exe} -m pip install --upgrade pip)
 
-execute_process(COMMAND venv/Scripts/python.exe -m pip install libclang)
-execute_process(COMMAND venv/Scripts/python.exe -m pip install clang)
-execute_process(COMMAND venv/Scripts/python.exe -m pip install wheel)
+execute_process(COMMAND ${venv_python_exe} -m pip install libclang)
+execute_process(COMMAND ${venv_python_exe} -m pip install clang)
+execute_process(COMMAND ${venv_python_exe} -m pip install wheel)
 
 add_custom_command(TARGET GeneratorTest
                     PRE_BUILD
                     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
                     COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
-                    COMMAND venv/Scripts/python.exe ${CMAKE_CURRENT_SOURCE_DIR}/generate_header_compilation.py
-                    COMMAND venv/Scripts/python.exe ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
+                    COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header_compilation.py
+                    COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
                     )
 #add_custom_command(TARGET GeneratorTest
 #                    POST_BUILD
