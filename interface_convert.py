@@ -150,7 +150,7 @@ def parse_methods(cursor, method_count_local, current_interface):
 
         method_name[position].append(cursor.spelling)
 
-        method_return[position].append(convert(get_underlying_type(cursor, cursor.result_type, current_interface)))
+        method_return[position].append(convert(get_underlying_type(cursor.result_type, current_interface)))
         method_args_content = parse_method_arguments(cursor, current_interface)
         method_args[position][method_count_local - 1].append("".join(method_args_content))
     return method_count_local
@@ -167,35 +167,28 @@ def parse_method_arguments(cursor, current_interface):
     for cursor_child in cursor.get_arguments():
         if p > 0:
             method_args_content.append(", ")
-        method_args_content.append(convert(get_underlying_type(cursor_child, cursor_child.type, current_interface)))
+        method_args_content.append(convert(get_underlying_type(cursor_child.type, current_interface)))
         method_args_content.append(" ")
         method_args_content.append(convert(cursor_child.spelling))
         p = p + 1
     return method_args_content
 
-def get_underlying_type(cursor, type, current_interface):
+def get_underlying_type(type, current_interface):
     if type.kind == type.kind.ENUM:
         return type.spelling
     namespaces = get_namespaces(type.spelling)
-    if namespaces and namespaces[-1] == current_interface:
-        if type.kind == type.kind.LVALUEREFERENCE:
-            result_type = list(cursor.get_children())[0].type
-            suffix = " &"
-        elif type.kind == type.kind.LVALUEREFERENCE or type.kind == type.kind.RVALUEREFERENCE:
-            result_type = list(cursor.get_children())[0].type
-            suffix = " &&"
-        elif type.kind == type.kind.POINTER:
-            result_type = type.get_pointee()
-            suffix = " *"
-            if result_type.kind == type.kind.POINTER:
-                result_type = result_type.get_pointee()
-                suffix += "*"
-        else:
-            result_type = type
-            suffix = ""
-        return result_type.get_declaration().underlying_typedef_type.spelling + suffix
-    else:
+    if not namespaces or namespaces[-1] != current_interface:
         return type.spelling
+    result_type = type
+    while result_type.get_pointee().kind != type.kind.INVALID:
+        result_type = result_type.get_pointee()
+    suffix = type.spelling[len(result_type.spelling):]
+    suffix = suffix.replace('*const', '* const')
+    prefix = ''
+    if result_type.is_const_qualified():
+        prefix = 'const'
+    return '{} {}{}'.format(prefix, result_type.get_declaration().underlying_typedef_type.spelling, suffix)
+
 
 # ----- parse structs ---------------------------------------------------------------
 
