@@ -528,6 +528,7 @@ def get_values_in_extent(i):
 
 def convert(source):
     found_const = False
+    found_const_end = False
     found_unsigned = False
     found_doubleptr = False
     found_ptr = False
@@ -536,11 +537,14 @@ def convert(source):
     found_ptr_lvr = False
 
     source = str(source)
-    #print(source)
+    print(source)
 
     if "const " in source:
         source = source.replace("const ", "")
         found_const = True
+    if source.endswith("const"):
+        source = source.replace("const", "")
+        found_const_end = True
     if "unsigned" in source:
         source = source.replace("unsigned ", "")
         found_unsigned = True
@@ -561,7 +565,7 @@ def convert(source):
         found_lvr = True
     source, brackets = normalise_brackets(source)
     source = normalise_namespace(source)
-    #print("  ", source)
+    print("  ", source)
 
     if source in enum_table_l:
         source = convert(enum_table_r[enum_table_l.index(source)])
@@ -591,8 +595,10 @@ def convert(source):
         source = "{}&".format(source)
     if found_ptr_lvr:
         source = "{}*&".format(source)
-    #print("     ", source)
-    #print()
+    if found_const_end:
+        source = "{} const".format(source)
+    print("     ", source)
+    print()
     return source
 
 
