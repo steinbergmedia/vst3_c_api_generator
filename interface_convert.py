@@ -179,22 +179,13 @@ def get_underlying_type(type, current_interface):
     namespaces = get_namespaces(type.spelling)
     if not namespaces or namespaces[-1] != current_interface:
         return type.spelling
-    if type.kind == type.kind.LVALUEREFERENCE:
-        result_type = type.get_pointee()
-        suffix = " &"
-    elif type.kind ==  type.kind.RVALUEREFERENCE:
-        result_type = type.get_pointee()
-        suffix = " &&"
-    elif type.kind == type.kind.POINTER:
-        result_type = type.get_pointee()
-        suffix = " *"
-        if result_type.kind == type.kind.POINTER:
-            result_type = result_type.get_pointee()
-            suffix += "*"
-    else:
-        result_type = type
-        suffix = ""
-    return result_type.get_declaration().underlying_typedef_type.spelling + suffix
+    result_type = type
+    while result_type.get_pointee().kind != type.kind.INVALID:
+        result_type = result_type.get_pointee()
+    suffix = type.spelling[len(result_type.spelling):]
+    suffix = suffix.replace('*const', '* const')
+    result_type = result_type.get_declaration().underlying_typedef_type
+    return result_type.spelling + suffix
 
 
 # ----- parse structs ---------------------------------------------------------------
