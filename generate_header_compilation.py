@@ -1,3 +1,4 @@
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -23,7 +24,10 @@ def _generate_header(pluginterfaces_path, result_path):
 
 # noinspection SpellCheckingInspection
 def main():
-    pluginterfaces_path = Path(__file__).parent / 'build' / '_deps' / 'pluginterfaces'
+    if len(sys.argv) < 2:
+        print('Pluginterfaces source directory was not specified!')
+        exit(1)
+    pluginterfaces_path = Path(sys.argv[1])
     result_path = pluginterfaces_path / 'vst' / 'header_compilation.h'
     print(_generate_header(pluginterfaces_path, result_path))
 
