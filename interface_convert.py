@@ -1,8 +1,9 @@
 import sys
 from optparse import OptionParser
 from pathlib import Path
+from typing import List
 
-from clang.cindex import Index, TokenGroup
+from clang.cindex import Index, TokenGroup, Type
 
 from clang_helpers import set_library_path
 
@@ -155,10 +156,12 @@ def parse_methods(cursor, method_count_local, current_interface):
         method_args[position][method_count_local - 1].append("".join(method_args_content))
     return method_count_local
 
-def get_namespaces(source):
-    if "const " in source:
-        source = source.replace("const ", "")
-    return source.split("::")[:-1]
+
+def get_namespaces(source_type: Type) -> List[str]:
+    spelling = source_type.spelling
+    if source_type.is_const_qualified():
+        spelling = spelling[6:]
+    return spelling.split("::")[:-1]
 
 
 def parse_method_arguments(cursor, current_interface):
@@ -176,7 +179,7 @@ def parse_method_arguments(cursor, current_interface):
 def get_underlying_type(type, current_interface):
     if type.kind == type.kind.ENUM:
         return type.spelling
-    namespaces = get_namespaces(type.spelling)
+    namespaces = get_namespaces(type)
     if not namespaces or namespaces[-1] != current_interface:
         return type.spelling
     result_type = type
