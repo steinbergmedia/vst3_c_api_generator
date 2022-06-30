@@ -1,67 +1,10 @@
 import sys
 from optparse import OptionParser
 from pathlib import Path
-from typing import List
 
-from clang.cindex import Index, TokenGroup, Type
+from clang.cindex import Index, TokenGroup
 
 from clang_helpers import set_library_path
-
-
-# ----- preparse -------------------------------------------------------------------------------------------------------
-
-def preparse_header(cursor):
-    for cursor_child in cursor.get_children():
-        if include_path in normalise_link(cursor_child.location.file) and normalise_link(cursor_child.location.file) not in includes_table_preparse:
-            includes_table_preparse.append(normalise_link(cursor_child.location.file))
-            preparse_namespace(cursor_child)
-            preparsing(cursor_child)
-
-def preparse_namespace(cursor):
-    if cursor.kind == cursor.kind.NAMESPACE:
-        for cursor_child in cursor.get_children():
-            preparse_namespace(cursor_child)
-            preparsing(cursor_child)
-
-def preparsing(cursor):
-    preparse_interfaces(cursor)
-    preparse_enum(cursor)
-    preparse_structs(cursor)
-    parse_typedefs(cursor)
-
-
-def preparse_interfaces(cursor):
-    if cursor.kind == cursor.kind.CLASS_DECL:
-        interface_name_preparse.append(normalise_namespace(cursor.spelling))
-        for cursor_child in cursor.get_children():
-            #parse_typedefs(cursor_child)
-            preparse_enum(cursor_child)
-
-def preparse_enum(cursor):
-    if cursor.kind == cursor.kind.ENUM_DECL:
-        enum_name_preparse.append(cursor.spelling)
-
-def preparse_structs(cursor):
-    if cursor.kind == cursor.kind.STRUCT_DECL:
-        r = 0
-        for cursor_child in cursor.get_children():
-            preparse_enum(cursor_child)
-            if cursor_child.kind == cursor_child.kind.FIELD_DECL:
-                if r == 0:
-                    struct_table_preparse.append(cursor.spelling)
-                r = r + 1
-
-def parse_typedefs(cursor):
-    if cursor.kind == cursor.kind.TYPEDEF_DECL:
-        if cursor.spelling not in SMTG_TUID_table:
-            typedef_name_preparse.append(cursor.spelling)
-
-        if cursor.underlying_typedef_type.kind == cursor.type.kind.CONSTANTARRAY:
-            typedef_return.append(convert(cursor.underlying_typedef_type.element_type.spelling))
-            typedef_name.append("{}[{}]".format(convert(cursor.spelling), cursor.underlying_typedef_type.element_count))
-        else:
-            typedef_return.append(convert(cursor.underlying_typedef_type.spelling))
-            typedef_name.append(convert(cursor.spelling))
 
 
 # ----- parse ----------------------------------------------------------------------------------------------------------
@@ -84,6 +27,7 @@ def parsing(cursor):
     parse_enum(cursor)
     parse_structs(cursor)
     parse_IID(cursor)
+    parse_typedefs(cursor)
 
 def parse_IID(cursor):
     if cursor.kind == cursor.kind.VAR_DECL and cursor.spelling.endswith("_iid"):
@@ -95,6 +39,27 @@ def get_tokens_from_extent(cursor):
     extent = tu.get_extent(cursor.location.file.name, [cursor.extent.start.offset, cursor.extent.end.offset])
     return [token.spelling for token in TokenGroup.get_tokens(tu, extent)]
 
+
+# ----- parse typedefs ---------------------------------------------------------------
+
+def parse_typedefs(cursor):
+    if cursor.kind == cursor.kind.TYPEDEF_DECL or cursor.kind == cursor.kind.TYPE_ALIAS_DECL:
+        if cursor.underlying_typedef_type.kind == cursor.type.kind.CONSTANTARRAY:
+            typedef_return.append(convert(cursor.underlying_typedef_type.element_type.spelling))
+            typedef_name.append("{}[{}]".format(convert(cursor.type.spelling), cursor.underlying_typedef_type.element_count))
+        else:
+            typedef_return.append(convert(cursor.underlying_typedef_type.spelling))
+            typedef_name.append(convert(cursor.type.spelling))
+
+def parse_interface_typedefs(cursor):
+    if cursor.kind == cursor.kind.TYPEDEF_DECL or cursor.kind == cursor.kind.TYPE_ALIAS_DECL:
+        if cursor.underlying_typedef_type.kind == cursor.type.kind.CONSTANTARRAY:
+            interface_typedef_return.append(convert(cursor.underlying_typedef_type.element_type.spelling))
+            interface_typedef_name.append("{}[{}]".format(convert(cursor.type.spelling), cursor.underlying_typedef_type.element_count))
+        else:
+            interface_typedef_return.append(convert(cursor.underlying_typedef_type.spelling))
+            interface_typedef_name.append(convert(cursor.type.spelling))
+
 # ----- parse interfaces ---------------------------------------------------------------
 
 def parse_interfaces(cursor):
@@ -104,7 +69,7 @@ def parse_interfaces(cursor):
             return
         interface_source.append("Source: \"{}\", line {}".format(normalise_link(cursor.location.file), cursor.location.line))
         interface_description.append(cursor.brief_comment)
-        interface_name.append(normalise_namespace(cursor.spelling))
+        interface_name.append(convert(cursor.type.spelling))
         position = len(interface_name) - 1
 
         inherits_table.append("")
@@ -121,6 +86,7 @@ def parse_interfaces(cursor):
 
         method_count_local = 0
         for cursor_child in children:
+            parse_interface_typedefs(cursor_child)
             parse_enum(cursor_child)
             parse_inheritance(cursor_child)
             method_count_local = parse_methods(cursor_child, method_count_local, interface_name[-1])
@@ -151,18 +117,10 @@ def parse_methods(cursor, method_count_local, current_interface):
 
         method_name[position].append(cursor.spelling)
 
-        method_return[position].append(convert(get_underlying_type(cursor.result_type, current_interface)))
+        method_return[position].append(convert(cursor.result_type.spelling))
         method_args_content = parse_method_arguments(cursor, current_interface)
         method_args[position][method_count_local - 1].append("".join(method_args_content))
     return method_count_local
-
-
-def get_namespaces(source_type: Type) -> List[str]:
-    spelling = source_type.spelling
-    if source_type.is_const_qualified():
-        spelling = spelling[6:]
-    return spelling.split("::")[:-1]
-
 
 def parse_method_arguments(cursor, current_interface):
     p = 0
@@ -170,26 +128,11 @@ def parse_method_arguments(cursor, current_interface):
     for cursor_child in cursor.get_arguments():
         if p > 0:
             method_args_content.append(", ")
-        method_args_content.append(convert(get_underlying_type(cursor_child.type, current_interface)))
+        method_args_content.append(convert(cursor_child.type.spelling))
         method_args_content.append(" ")
         method_args_content.append(convert(cursor_child.spelling))
         p = p + 1
     return method_args_content
-
-def get_underlying_type(type, current_interface):
-    if type.kind == type.kind.ENUM:
-        return type.spelling
-    namespaces = get_namespaces(type)
-    if not namespaces or namespaces[-1] != current_interface:
-        return type.spelling
-    result_type = type
-    while result_type.get_pointee().kind != type.kind.INVALID:
-        result_type = result_type.get_pointee()
-    suffix = type.spelling[len(result_type.spelling):]
-    prefix = ''
-    if result_type.is_const_qualified():
-        prefix = 'const'
-    return '{} {}{}'.format(prefix, result_type.get_declaration().underlying_typedef_type.spelling, suffix)
 
 
 # ----- parse structs ---------------------------------------------------------------
@@ -204,7 +147,7 @@ def parse_structs(cursor):
                 struct_args = ""
 
                 if r == 0:
-                    struct_table.append(cursor.spelling)
+                    struct_table.append(convert(cursor.type.spelling))
                     position = len(struct_table) - 1
                     struct_source.append("Source: \"{}\", line {}".format(normalise_link(cursor.location.file), cursor.location.line))
                     struct_content.append("")
@@ -231,7 +174,10 @@ def parse_structs(cursor):
 
 def parse_enum(cursor):
     if cursor.kind == cursor.kind.ENUM_DECL:
-        enum_name.append(cursor.spelling)
+        if cursor.spelling == "":
+            enum_name.append(cursor.spelling)
+        else:
+            enum_name.append(convert(cursor.type.spelling))
         position = len(enum_name) - 1
         enum_table.append("")
         enum_table[position] = []
@@ -315,6 +261,19 @@ def generate_typedefs():
             string += "typedef {} {};\n".format(typedef_return[i], typedef_name[i])
     return string
 
+def generate_interface_typedefs():
+    string = ""
+    string += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    string += "Interface typedefs\n"
+    string += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    string += "\n"
+    for i in range(len(interface_typedef_name)):
+        if typedef_return[i] != []:
+            string += "typedef {} {};\n".format(interface_typedef_return[i], interface_typedef_name[i])
+    string += "\n"
+    string += "\n"
+    return string
+
 def generate_forward():
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
@@ -331,7 +290,6 @@ def generate_forward():
     for i in range(len(struct_table)):
         string += "struct {};\n".format(convert(struct_table[i]))
     string += "\n"
-    string += "\n"
     return string
 
 def generate_enums():
@@ -346,19 +304,13 @@ def generate_enums():
         string += "/*----------------------------------------------------------------------------------------------------------------------\n"
         string += "{} */\n".format(enum_source[i])
         string += "\n"
-        string += "enum SMTG_{}\n".format(enum_name[i])
+        string += "struct {}\n".format(enum_name[i])
         string += "{\n"
         for j in range(int(len(enum_table[i]) / 2)):
-            if j < int(len(enum_table[i]) / 2) - 1:
-                if enum_table[i][2 * j + 1] != "nil":
-                    string += "{} = {},\n".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
-                else:
-                    string += "{},\n".format(enum_table[i][2 * j])
+            if enum_table[i][2 * j + 1] != "nil":
+                string += "static const uint32_t {} = {};\n".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
             else:
-                if enum_table[i][2 * j + 1] != "nil":
-                    string += "{} = {}\n".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
-                else:
-                    string += "{}\n".format(enum_table[i][2 * j])
+                string += "static const uint32_t {};\n".format(enum_table[i][2 * j])
         string += "};\n"
         string += "\n"
     string += "\n"
@@ -374,7 +326,7 @@ def generate_structs():
         string += "/*----------------------------------------------------------------------------------------------------------------------\n"
         string += "{} */\n".format(struct_source[i])
         string += "\n"
-        string += "struct SMTG_{} {}\n".format(struct_table[i], "{")
+        string += "struct {} {}\n".format(struct_table[i], "{")
         for j in range(len(struct_content[i])):
             string += "    {}\n".format(struct_content[i][j])
         string += "};\n"
@@ -393,20 +345,20 @@ def generate_interface():
         #string += "Steinberg::{}\n".format(interface_name[i])
         string += "{} */\n".format(interface_source[i])
         string += "\n"
-        string += "typedef struct SMTG_{}Vtbl\n".format(interface_name[i])
+        string += "typedef struct {}Vtbl\n".format(interface_name[i])
         string += "{\n"
         string += generate_methods(i)
-        string += "{} SMTG_{}Vtbl;\n".format("}", interface_name[i])
+        string += "{} {}Vtbl;\n".format("}", interface_name[i])
         string += "\n"
-        string += "typedef struct SMTG_{}\n".format(interface_name[i])
+        string += "typedef struct {}\n".format(interface_name[i])
         string += "{\n"
-        string += "    SMTG_{}Vtbl* lpVtbl;\n".format(interface_name[i])
-        string += "{} SMTG_{};\n".format("}", interface_name[i])
+        string += "    {}Vtbl* lpVtbl;\n".format(interface_name[i])
+        string += "{} {};\n".format("}", interface_name[i])
         string += "\n"
         if interface_name[i] in ID_table:
             interface_ids = ID_table[interface_name[i]]
             #string += "/*----------------------------------------------------------------------------------------------------------------------\n"
-            string += "SMTG_TUID SMTG_{}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
+            string += "Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
                                                                                      interface_ids[0],
                                                                                      interface_ids[1],
                                                                                      interface_ids[2],
@@ -451,6 +403,7 @@ def generate_methods(i):
 def generate_conversion():
     string = generate_standard()
     string += generate_forward()
+    string += generate_interface_typedefs()
     string += generate_enums()
     string += generate_structs()
     string += generate_interface()
@@ -498,6 +451,11 @@ def normalise_namespace(source):
         source = normalise_namespace(source)
     #print()
     return source
+
+def get_namespaces(source):
+    if "const " in source:
+        source = source.replace("const ", "")
+    return source.split("::")[:-1]
 
 def normalise_brackets(source):
     brackets = ""
@@ -567,16 +525,11 @@ def convert(source):
         source = source.replace(" &", "")
         found_lvr = True
     source, brackets = normalise_brackets(source)
-    source = normalise_namespace(source)
+    source = convert_namespace(source)
     print("  ", source)
 
     if source in enum_table_l:
         source = convert(enum_table_r[enum_table_l.index(source)])
-    elif source in SMTG_TUID_table:
-        source = "SMTG_TUID"
-    elif source in struct_table_preparse or source in interface_name_preparse or\
-        source in typedef_name_preparse or source in enum_name_preparse:
-        source = "SMTG_{}".format(source)
     elif source == "_iid":
         source = "iid"
     elif source in remove_table:
@@ -604,6 +557,15 @@ def convert(source):
     print()
     return source
 
+def convert_namespace(source):
+    source = str(source)
+    if "::" in source:
+        source = source.replace("::", "_")
+    return source
+def apply_namespaces(source, namespaces):
+    for i in range(len(namespaces)):
+        source = "{}_{}".format(namespaces[i - 1], source)
+    return source
 
 
 
@@ -632,34 +594,31 @@ if __name__ == '__main__':
     interface_source = []
     interface_description = []
     interface_name = []
-    interface_name_preparse = []
     inherits_table = []
 
     includes_list = []
     includes_table = []
-    includes_table_preparse = []
 
     method_name = []
     method_return = []
     method_args = []
 
     struct_table = []
-    struct_table_preparse = []
     struct_content = []
     struct_source = []
 
     enum_name = []
-    enum_name_preparse = []
     enum_table = []
     enum_table_l = []
     enum_table_r = []
     enum_source = []
 
     typedef_name = []
-    typedef_name_preparse = []
     typedef_return = []
     typedef_interface_name = []
     typedef_interface_return = []
+    interface_typedef_return = []
+    interface_typedef_name = []
 
 
     ID_table = {}
@@ -668,10 +627,8 @@ if __name__ == '__main__':
 # ----- Conversion helper arrays -----
     blacklist = ["FUID", "FReleaser"]
     remove_table = ["/*out*/", "/*in*/"]
-    SMTG_TUID_table = ["FIDString", "TUID"]
 
 # ----- Parse -----
-    preparse_header(tu.cursor)
     parse_header(tu.cursor)
     header_content = generate_conversion()
 
