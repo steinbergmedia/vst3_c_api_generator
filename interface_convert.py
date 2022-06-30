@@ -184,8 +184,10 @@ def get_underlying_type(type, current_interface):
         result_type = result_type.get_pointee()
     suffix = type.spelling[len(result_type.spelling):]
     suffix = suffix.replace('*const', '* const')
-    result_type = result_type.get_declaration().underlying_typedef_type
-    return result_type.spelling + suffix
+    prefix = ''
+    if result_type.is_const_qualified():
+        prefix = 'const'
+    return '{} {}{}'.format(prefix, result_type.get_declaration().underlying_typedef_type.spelling, suffix)
 
 
 # ----- parse structs ---------------------------------------------------------------
