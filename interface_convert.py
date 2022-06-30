@@ -183,7 +183,6 @@ def get_underlying_type(type, current_interface):
     while result_type.get_pointee().kind != type.kind.INVALID:
         result_type = result_type.get_pointee()
     suffix = type.spelling[len(result_type.spelling):]
-    suffix = suffix.replace('*const', '* const')
     prefix = ''
     if result_type.is_const_qualified():
         prefix = 'const'
