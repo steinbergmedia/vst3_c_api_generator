@@ -30,9 +30,9 @@ endif()
 
 execute_process(COMMAND ${venv_python_exe} -m pip install --upgrade pip)
 
-execute_process(COMMAND ${venv_python_exe} -m pip install libclang)
-execute_process(COMMAND ${venv_python_exe} -m pip install clang)
-execute_process(COMMAND ${venv_python_exe} -m pip install wheel)
+foreach(library libclang clang jinja2)
+  execute_process(COMMAND ${venv_python_exe} -m pip install ${library})
+endforeach()
 
 add_custom_command(TARGET GeneratorTest
                     PRE_BUILD

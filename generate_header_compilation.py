@@ -1,50 +1,31 @@
+from datetime import date
 from pathlib import Path
 
-from file_string import FileString
-
-print_header_file = True
-create_header_file = True
+from jinja2 import Environment, FileSystemLoader
 
 
 # noinspection SpellCheckingInspection
-def _generate_header(pluginterfaces_path):
-    result = FileString()
-    result /= '//------------------------------------------------------------------------'
-    result /= '// Project     : VST SDK'
-    result /= '//'
-    result /= '// Category    : Interfaces'
-    result /= '// Filename    : pluginterfaces/vst/header_compilation.h'
-    result /= '// Created by  : Steinberg, 06/2022'
-    result /= '// Description : VST Edit Controller Interfaces'
-    result /= '//'
-    result /= '//-----------------------------------------------------------------------------'
-    result /= '// This file is part of a Steinberg SDK. It is subject to the license terms'
-    result /= '// in the LICENSE file found in the top-level directory of this distribution'
-    result /= '// and at www.steinberg.net/sdklicenses.'
-    result /= '// No part of the SDK, including this file, may be copied, modified, propagated,'
-    result /= '// or distributed except according to the terms contained in the LICENSE file.'
-    result /= '//-----------------------------------------------------------------------------'
-    result /= ''
-    result /= '#pragma once'
-    result /= ''
+def _generate_header(pluginterfaces_path, result_path):
+    pluginterfaces_includes = []
     for file in ['gui/iplugviewcontentscalesupport.h', 'base/ibstream.h']:
-        result /= f'#include "pluginterfaces/{file}"'
+        pluginterfaces_includes.append(file)
     for file in (pluginterfaces_path / 'vst').iterdir():
-        result /= f'#include "pluginterfaces/vst/{file.name}"'
-    return result
+        pluginterfaces_includes.append(file.name)
+    env = Environment(loader=FileSystemLoader(Path(__file__).parent / 'templates'), trim_blocks=True)
+    template = env.get_template(result_path.name)
+    file_name = result_path.relative_to(result_path.parents[2])
+    today = date.today().strftime("%m/%Y")
+    content = template.render(file_name=file_name, date=today, pluginterfaces_includes=pluginterfaces_includes)
+    with result_path.open('w') as result_file:
+        result_file.write(content)
+    return content
 
 
 # noinspection SpellCheckingInspection
 def main():
     pluginterfaces_path = Path(__file__).parent / 'build' / '_deps' / 'pluginterfaces'
-    header_string = _generate_header(pluginterfaces_path)
-
-    if create_header_file:
-        with (pluginterfaces_path / 'vst' / 'header_compilation.h').open('w') as h:
-            h.write(header_string)
-
-    if print_header_file:
-        print(header_string)
+    result_path = pluginterfaces_path / 'vst' / 'header_compilation.h'
+    print(_generate_header(pluginterfaces_path, result_path))
 
 
 if __name__ == '__main__':
