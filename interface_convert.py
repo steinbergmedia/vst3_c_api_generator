@@ -138,29 +138,22 @@ def parse_method_arguments(cursor, current_interface):
 
 # ----- parse variables ---------------------------------------------------------------
 
+
 def parse_variables(cursor):
     if cursor.kind == cursor.kind.VAR_DECL and cursor.type.kind == cursor.type.kind.TYPEDEF:
         variable_name.append(convert(cursor.spelling))
         variable_return.append(convert(cursor.type.spelling))
-        cursor_child = list(cursor.get_children())[-1]
-
-        if cursor_child.kind != cursor_child.kind.UNEXPOSED_EXPR:
-            value = array_to_string(get_values_in_extent(cursor_child), True)
-            variable_value.append(value)
+        last_cursor_child = list(cursor.get_children())[-1]
+        grand_children = list(last_cursor_child.get_children())
+        if len(grand_children) == 1 and grand_children[0].kind == cursor.kind.STRING_LITERAL:
+            # Expand only macros with single string literals
+            variable_value.append(grand_children[0].spelling)
         else:
-            value = list(cursor_child.get_children())[0].spelling
-            if value != "":
-                variable_value.append(value)
-            else:
-                value = array_to_string(get_values_in_extent(cursor_child), True)
-                variable_value.append(value)
-
-
-
-
-
+            value = array_to_string(get_values_in_extent(last_cursor_child), True)
+            variable_value.append(value)
 
 # ----- parse structs ---------------------------------------------------------------
+
 
 def parse_structs(cursor):
     if cursor.kind == cursor.kind.STRUCT_DECL and cursor.spelling not in blacklist:
