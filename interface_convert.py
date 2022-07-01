@@ -194,9 +194,10 @@ def parse_enum_value(cursor):
     position = len(enum_name) - 1
     for cursor_child in cursor.get_children():
         children = True
-        if cursor_child.kind == cursor_child.kind.INTEGER_LITERAL or cursor_child.kind == cursor_child.kind.BINARY_OPERATOR:
+        is_negative = cursor_child.kind == cursor_child.kind.UNARY_OPERATOR
+        if cursor_child.kind == cursor_child.kind.INTEGER_LITERAL or cursor_child.kind == cursor_child.kind.BINARY_OPERATOR or is_negative:
             if array_to_string(get_values_in_extent(cursor_child), True) != "":
-                enum_table[position].append(array_to_string(get_values_in_extent(cursor_child), True))
+                enum_table[position].append(array_to_string(get_values_in_extent(cursor_child), not is_negative))
                 enum_table_r.append(array_to_string(get_values_in_extent(cursor_child), True))
         elif cursor_child.kind == cursor_child.kind.UNEXPOSED_EXPR:
             parse_enum_value(cursor_child)
