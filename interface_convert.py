@@ -150,7 +150,7 @@ def parse_variables(cursor):
             # Expand only macros with single string literals
             variable_value.append(grand_children[0].spelling)
         else:
-            value = array_to_string(get_values_in_extent(last_cursor_child), True)
+            value = tokens_to_string(list(last_cursor_child.get_tokens()))
             variable_value.append(value)
 
 # ----- parse structs ---------------------------------------------------------------
@@ -490,6 +490,28 @@ def array_to_string(array: List, insert_spaces: bool) -> str:
     if insert_spaces:
         divider = ' '
     return divider.join(array)
+
+def tokens_to_string(tokens: List) -> str:
+    result = ''
+    previous_kind = None
+    for token in tokens:
+        if token.spelling == '(' and previous_kind == token.cursor.kind.TYPE_REF:
+            # e.g.: uint64 (0xffffffff)
+            result += ' '
+        if token.spelling == ')':
+            # insert space after closing bracket, if not followed by another one
+            if result and result[-1] == ')':
+                result.strip()
+            result += f'{token.spelling} '
+        elif token.cursor.kind == token.cursor.kind.BINARY_OPERATOR:
+            # surround binary operators with spaces
+            result = result.strip()
+            result += f' {token.spelling} '
+        else:
+            result += token.spelling
+        previous_kind = token.cursor.kind
+    result = result.strip()
+    return result
 
 def get_values_in_extent(cursor):
     return [token.spelling for token in cursor.get_tokens()]
