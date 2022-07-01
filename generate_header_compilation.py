@@ -7,11 +7,14 @@ from jinja2 import Environment, FileSystemLoader
 
 # noinspection SpellCheckingInspection
 def _generate_header(pluginterfaces_path, result_path):
+    blocklist = ['ivsttestplugprovider.h']
     pluginterfaces_includes = []
-    for file in ['gui/iplugviewcontentscalesupport.h', 'base/ibstream.h']:
+    for file in ['gui/iplugviewcontentscalesupport.h', 'gui/iplugview.h', 'base/ibstream.h']:
         pluginterfaces_includes.append(file)
     for file in (pluginterfaces_path / 'vst').iterdir():
-        pluginterfaces_includes.append(file.name)
+        if file.name in blocklist:
+            continue
+        pluginterfaces_includes.append('vst/{}'.format(file.name))
     env = Environment(loader=FileSystemLoader(Path(__file__).parent / 'templates'), trim_blocks=True)
     template = env.get_template(result_path.name)
     file_name = result_path.relative_to(result_path.parents[2])

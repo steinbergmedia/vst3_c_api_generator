@@ -306,11 +306,19 @@ def generate_enums():
         string += "\n"
         string += "struct {}\n".format(enum_name[i])
         string += "{\n"
+        previous = None
         for j in range(int(len(enum_table[i]) / 2)):
             if enum_table[i][2 * j + 1] != "nil":
                 string += "static const uint32_t {} = {};\n".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
             else:
-                string += "static const uint32_t {};\n".format(enum_table[i][2 * j])
+                if j == 0:
+                    string += "static const uint32_t {} = 0;\n".format(enum_table[i][2 * j])
+                elif previous:
+                    string += "static const uint32_t {} = {} + 1;\n".format(enum_table[i][2 * j], previous)
+                else:
+                    raise NameError("'previous' not defined")
+            previous = enum_table[i][2 * j]
+
         string += "};\n"
         string += "\n"
     string += "\n"
@@ -342,7 +350,6 @@ def generate_interface():
     string += "\n"
     for i in range(len(interface_name)):
         string += "/*----------------------------------------------------------------------------------------------------------------------\n"
-        #string += "Steinberg::{}\n".format(interface_name[i])
         string += "{} */\n".format(interface_source[i])
         string += "\n"
         string += "typedef struct {}Vtbl\n".format(interface_name[i])
@@ -357,13 +364,11 @@ def generate_interface():
         string += "\n"
         if interface_name[i] in ID_table:
             interface_ids = ID_table[interface_name[i]]
-            #string += "/*----------------------------------------------------------------------------------------------------------------------\n"
             string += "Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
                                                                                      interface_ids[0],
                                                                                      interface_ids[1],
                                                                                      interface_ids[2],
                                                                                      interface_ids[3])
-            #string += "----------------------------------------------------------------------------------------------------------------------*/\n"
         string += "\n"
     string += "\n"
     return string
@@ -481,8 +486,8 @@ def array_to_string(array, spaces):
         string = "".join(array)
     return string
 
-def get_values_in_extent(i):
-    return [t.spelling for t in i.get_tokens()]
+def get_values_in_extent(cursor):
+    return [token.spelling for token in cursor.get_tokens()]
 
 
 # ----- conversion function --------------------------------------------------------------------------------------------
@@ -498,7 +503,7 @@ def convert(source):
     found_ptr_lvr = False
 
     source = str(source)
-    print(source)
+    #print(source)
 
     if "const " in source:
         source = source.replace("const ", "")
@@ -526,7 +531,7 @@ def convert(source):
         found_lvr = True
     source, brackets = normalise_brackets(source)
     source = convert_namespace(source)
-    print("  ", source)
+    #print("  ", source)
 
     if source in enum_table_l:
         source = convert(enum_table_r[enum_table_l.index(source)])
@@ -553,8 +558,8 @@ def convert(source):
         source = "{}*&".format(source)
     if found_const_end:
         source = "{} const".format(source)
-    print("     ", source)
-    print()
+    #print("     ", source)
+    #print()
     return source
 
 def convert_namespace(source):
