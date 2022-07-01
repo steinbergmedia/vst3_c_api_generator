@@ -136,6 +136,29 @@ def parse_method_arguments(cursor, current_interface):
         p = p + 1
     return method_args_content
 
+# ----- parse variables ---------------------------------------------------------------
+
+def parse_variables(cursor):
+    if cursor.kind == cursor.kind.VAR_DECL and cursor.type.kind == cursor.type.kind.TYPEDEF:
+        variable_name.append(convert(cursor.spelling))
+        variable_return.append(convert(cursor.type.spelling))
+        cursor_child = list(cursor.get_children())[-1]
+
+        if cursor_child.kind != cursor_child.kind.UNEXPOSED_EXPR:
+            value = array_to_string(get_values_in_extent(cursor_child), True)
+            variable_value.append(value)
+        else:
+            value = list(cursor_child.get_children())[0].spelling
+            if value != "":
+                variable_value.append(value)
+            else:
+                value = array_to_string(get_values_in_extent(cursor_child), True)
+                variable_value.append(value)
+
+
+
+
+
 
 # ----- parse structs ---------------------------------------------------------------
 
@@ -307,25 +330,36 @@ def generate_enums():
         string += "/*----------------------------------------------------------------------------------------------------------------------\n"
         string += "{} */\n".format(enum_source[i])
         string += "\n"
-        string += "struct {}\n".format(enum_name[i])
+        string += "enum {}\n".format(enum_name[i])
+        namespaces_list = get_converted_namespaces(enum_name[i])
+        namespaces = ""
+        for i in range(len(namespaces_list)):
+            namespaces = "{}_{}".format(namespaces_list[-(i + 1)], namespaces)
         string += "{\n"
         previous = None
-        for j in range(int(len(enum_table[i]) / 2)):
+        enum_count = int(len(enum_table[i]) / 2)
+        for j in range(enum_count):
             if enum_table[i][2 * j + 1] != "nil":
-                string += "static const uint32_t {} = {};\n".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
+                string += "{}{} = {}".format(namespaces, enum_table[i][2 * j], enum_table[i][2 * j + 1])
             else:
-                if j == 0:
-                    string += "static const uint32_t {} = 0;\n".format(enum_table[i][2 * j])
-                elif previous:
-                    string += "static const uint32_t {} = {} + 1;\n".format(enum_table[i][2 * j], previous)
-                else:
-                    raise NameError("'previous' not defined")
-            previous = enum_table[i][2 * j]
+                string += "{}{}".format(namespaces, enum_table[i][2 * j])
+
+            if j < enum_count - 1:
+                string += ","
+            string += "\n"
+
+
 
         string += "};\n"
         string += "\n"
     string += "\n"
     return string
+
+
+def get_converted_namespaces(source):
+    if "const " in source:
+        source = source.replace("const ", "")
+    return source.split("_")[:-1]
 
 def generate_structs():
     string = ""
@@ -491,7 +525,7 @@ def convert(source):
     found_unsigned = False
     found_doubleptr = False
     found_ptr = False
-    found_rvr = False
+    #found_rvr = False
     found_lvr = False
     found_ptr_lvr = False
 
@@ -516,9 +550,9 @@ def convert(source):
     elif "*" in source:
         source = source.replace(" *", "")
         found_ptr = True
-    elif "&&" in source:
-        source = source.replace(" &&", "")
-        found_rvr = True
+    #elif "&&" in source:
+    #    source = source.replace(" &&", "")
+    #    found_rvr = True
     elif "&" in source:
         source = source.replace(" &", "")
         found_lvr = True
@@ -543,12 +577,12 @@ def convert(source):
         source = "{}**".format(source)
     if found_ptr:
         source = "{}*".format(source)
-    if found_rvr:
-        source = "{}&&".format(source)
+    #if found_rvr:
+    #    source = "{}&&".format(source)
     if found_lvr:
-        source = "{}&".format(source)
+        source = "{}*".format(source)
     if found_ptr_lvr:
-        source = "{}*&".format(source)
+        source = "{}**".format(source)
     if found_const_end:
         source = "{} const".format(source)
     #print("     ", source)
@@ -618,7 +652,9 @@ if __name__ == '__main__':
     interface_typedef_return = []
     interface_typedef_name = []
 
-    value_table = []
+    variable_return = []
+    variable_name = []
+    variable_value = []
 
 
     ID_table = {}
@@ -642,3 +678,6 @@ if __name__ == '__main__':
     if print_header:
         print(header_content)
         print_info()
+        for i in range(len(variable_name)):
+            print("{} {} = {}".format(variable_return[i], variable_name[i], variable_value[i]))
+        print()
