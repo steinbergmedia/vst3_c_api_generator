@@ -477,23 +477,12 @@ def normalise_link(source):
     source = str(source)
     return source.replace("\\", "/")
 
-def get_namespaces(source):
-    if "const " in source:
-        source = source.replace("const ", "")
-    return source.split("::")[:-1]
-
 def normalise_brackets(source):
     brackets = ""
     if "[" in source:
         brackets = source[source.index("["):]
         source = source[:source.index("[")]
     return source, brackets
-
-def remove_spaces(source):
-    source = str(source)
-    if " " in source:
-        source = source.replace(" ", "")
-    return source
 
 def array_to_string(array, spaces):
     string = ""
