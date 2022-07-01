@@ -1,6 +1,7 @@
 import sys
 from optparse import OptionParser
 from pathlib import Path
+from typing import List
 
 from clang.cindex import Index, TokenGroup
 
@@ -484,16 +485,11 @@ def normalise_brackets(source):
         source = source[:source.index("[")]
     return source, brackets
 
-def array_to_string(array, spaces):
-    string = ""
-    if spaces:
-        for i in range(len(array)):
-                if i != 0:
-                    string = string + " "
-                string = string + array[i]
-    else:
-        string = "".join(array)
-    return string
+def array_to_string(array: List, insert_spaces: bool) -> str:
+    divider = ''
+    if insert_spaces:
+        divider = ' '
+    return divider.join(array)
 
 def get_values_in_extent(cursor):
     return [token.spelling for token in cursor.get_tokens()]
