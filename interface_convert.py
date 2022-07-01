@@ -28,6 +28,7 @@ def parsing(cursor):
     parse_structs(cursor)
     parse_IID(cursor)
     parse_typedefs(cursor)
+    parse_variables(cursor)
 
 def parse_IID(cursor):
     if cursor.kind == cursor.kind.VAR_DECL and cursor.spelling.endswith("_iid"):
@@ -89,6 +90,7 @@ def parse_interfaces(cursor):
             parse_interface_typedefs(cursor_child)
             parse_enum(cursor_child)
             parse_inheritance(cursor_child)
+            parse_variables(cursor_child)
             method_count_local = parse_methods(cursor_child, method_count_local, interface_name[-1])
 
 
@@ -98,11 +100,11 @@ def parse_inheritance(cursor):
     if cursor.kind == cursor.kind.CXX_BASE_SPECIFIER:
         position = len(interface_name) - 1
         for k in range(len(inherits_table[position]) + 1):
-            if normalise_namespace(cursor.type.spelling) in interface_name:
-                inherits_location = interface_name.index(normalise_namespace(cursor.type.spelling))
+            if convert_namespace(cursor.type.spelling) in interface_name:
+                inherits_location = interface_name.index(convert_namespace(cursor.type.spelling))
                 for n in range(len(inherits_table[inherits_location])):
                     inherits_table[position].append(inherits_table[inherits_location][n])
-        inherits_table[position].append(normalise_namespace(cursor.type.spelling))
+        inherits_table[position].append(convert_namespace(cursor.type.spelling))
 
 
 # ----- parse methods ---------------------------------------------------------------
@@ -163,7 +165,7 @@ def parse_structs(cursor):
 
                 if struct_args != "":
                     struct_content[position].append(
-                        "{} {} [{}];".format(struct_return, cursor_child.spelling, struct_args))
+                        "{} {}[{}];".format(struct_return, cursor_child.spelling, struct_args))
                 else:
                     struct_content[position].append("{} {};".format(struct_return, cursor_child.spelling))
 
@@ -448,16 +450,6 @@ def normalise_link(source):
     source = str(source)
     return source.replace("\\", "/")
 
-def normalise_namespace(source):
-    source = str(source)
-    #print(source)
-    if "::" in source:
-        source = source[source.index("::") + 2:]
-        #print(" ", source)
-        source = normalise_namespace(source)
-    #print()
-    return source
-
 def get_namespaces(source):
     if "const " in source:
         source = source.replace("const ", "")
@@ -625,6 +617,8 @@ if __name__ == '__main__':
     typedef_interface_return = []
     interface_typedef_return = []
     interface_typedef_name = []
+
+    value_table = []
 
 
     ID_table = {}
