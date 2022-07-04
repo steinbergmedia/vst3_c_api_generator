@@ -3,7 +3,7 @@ from optparse import OptionParser
 from pathlib import Path
 from typing import List
 
-from clang.cindex import Index, TokenGroup
+from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token
 
 from clang_helpers import set_library_path
 
@@ -12,10 +12,12 @@ from clang_helpers import set_library_path
 
 def parse_header(cursor):
     for cursor_child in cursor.get_children():
-        if include_path in normalise_link(cursor_child.location.file) and normalise_link(cursor_child.location.file) not in includes_table:
-            includes_table.append(normalise_link(cursor_child.location.file))
-            parse_namespace(cursor_child)
-            parsing(cursor_child)
+        cursor_child_location = normalise_link(cursor_child.location.file.name)
+        if not cursor_child_location.startswith(include_path) or cursor_child_location in includes_table:
+            continue
+        includes_table.append(cursor_child_location)
+        parse_namespace(cursor_child)
+        parsing(cursor_child)
 
 def parse_namespace(cursor):
         if cursor.kind == cursor.kind.NAMESPACE:
@@ -69,7 +71,7 @@ def parse_interfaces(cursor):
         children = list(cursor.get_children())
         if not children:
             return
-        interface_source.append("Source: \"{}\", line {}".format(normalise_link(cursor.location.file), cursor.location.line))
+        interface_source.append(convert_cursor_location(cursor.location))
         interface_description.append(cursor.brief_comment)
         interface_name.append(convert(cursor.type.spelling))
         position = len(interface_name) - 1
@@ -168,7 +170,7 @@ def parse_structs(cursor):
                 if r == 0:
                     struct_table.append(convert(cursor.type.spelling))
                     position = len(struct_table) - 1
-                    struct_source.append("Source: \"{}\", line {}".format(normalise_link(cursor.location.file), cursor.location.line))
+                    struct_source.append(convert_cursor_location(cursor.location))
                     struct_content.append("")
                     struct_content[position] = []
                 if cursor_child.type.kind == cursor_child.type.kind.CONSTANTARRAY:
@@ -200,7 +202,7 @@ def parse_enum(cursor):
         position = len(enum_name) - 1
         enum_table.append("")
         enum_table[position] = []
-        enum_source.append("Source: {}, line {}".format(normalise_link(cursor.location.file), cursor.location.line))
+        enum_source.append(convert_cursor_location(cursor.location))
 
         for cursor_child in cursor.get_children():
             if cursor_child.kind == cursor_child.kind.ENUM_CONSTANT_DECL:
@@ -474,9 +476,13 @@ def print_info():
 
 # ----- utility functions ----------------------------------------------------------------------------------------------
 
-def normalise_link(source):
-    source = str(source)
-    return source.replace("\\", "/")
+def normalise_link(source: str) -> str:
+    return source.replace('\\', '/')
+
+
+def convert_cursor_location(cursor_location: SourceLocation) -> str:
+    return 'Source: "{}", line {}'.format(normalise_link(cursor_location.file.name), cursor_location.line)
+
 
 def normalise_brackets(source):
     brackets = ""
@@ -485,13 +491,19 @@ def normalise_brackets(source):
         source = source[:source.index("[")]
     return source, brackets
 
+
+def convert_namespace(source: str) -> str:
+    return source.replace('::', '_')
+
+
 def array_to_string(array: List, insert_spaces: bool) -> str:
     divider = ''
     if insert_spaces:
         divider = ' '
     return divider.join(array)
 
-def tokens_to_string(tokens: List) -> str:
+
+def tokens_to_string(tokens: List[Token]) -> str:
     result = ''
     previous_kind = None
     for token in tokens:
@@ -513,7 +525,8 @@ def tokens_to_string(tokens: List) -> str:
     result = result.strip()
     return result
 
-def get_values_in_extent(cursor):
+
+def get_values_in_extent(cursor: Cursor) -> List[str]:
     return [token.spelling for token in cursor.get_tokens()]
 
 
@@ -589,20 +602,6 @@ def convert(source):
     #print()
     return source
 
-def convert_namespace(source):
-    source = str(source)
-    if "::" in source:
-        source = source.replace("::", "_")
-    return source
-def apply_namespaces(source, namespaces):
-    for i in range(len(namespaces)):
-        source = "{}_{}".format(namespaces[i - 1], source)
-    return source
-
-
-
-
-
 
 if __name__ == '__main__':
 
@@ -618,7 +617,7 @@ if __name__ == '__main__':
         exit(1)
     set_library_path()
     index = Index.create()
-    include_path = normalise_link(Path(sys.argv[1]).parents[2])
+    include_path = normalise_link(str(Path(sys.argv[1]).parents[2]))
     tu = index.parse(normalise_link(filename[0]), ['-I', include_path, '-x', 'c++-header'])
     source_file = normalise_link(tu.spelling)
 
