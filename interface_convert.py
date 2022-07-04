@@ -203,14 +203,17 @@ def parse_enum(cursor):
         enum_table.append("")
         enum_table[position] = []
         enum_source.append(convert_cursor_location(cursor.location))
-
+        namespaces_list = get_converted_namespaces(enum_name[-1])
+        namespaces = ""
+        for j in range(len(namespaces_list)):
+            namespaces = "{}_{}".format(namespaces_list[-(j + 1)], namespaces)
         for cursor_child in cursor.get_children():
             if cursor_child.kind == cursor_child.kind.ENUM_CONSTANT_DECL:
-                enum_table[position].append(cursor_child.spelling)
+                enum_table[position].append("{}{}".format(namespaces, cursor_child.spelling))
                 enum_table_l.append(cursor_child.spelling)
-                parse_enum_value(cursor_child)
+                parse_enum_value(cursor_child, namespaces)
 
-def parse_enum_value(cursor):
+def parse_enum_value(cursor, namespaces):
     children = False
     position = len(enum_name) - 1
     for cursor_child in cursor.get_children():
@@ -219,9 +222,13 @@ def parse_enum_value(cursor):
         if cursor_child.kind == cursor_child.kind.INTEGER_LITERAL or cursor_child.kind == cursor_child.kind.BINARY_OPERATOR or is_negative:
             if array_to_string(get_values_in_extent(cursor_child), True) != "":
                 enum_table[position].append(array_to_string(get_values_in_extent(cursor_child), not is_negative))
-                enum_table_r.append(array_to_string(get_values_in_extent(cursor_child), True))
+                values = get_values_in_extent(cursor_child)
+                for i in range(len(values)):
+                    if values in enum_name:
+                        values[i] = "{}{}".format(namespaces, values[i])
+                enum_table_r.append(array_to_string(values, True))
         elif cursor_child.kind == cursor_child.kind.UNEXPOSED_EXPR:
-            parse_enum_value(cursor_child)
+            parse_enum_value(cursor_child, namespaces)
         else:
             enum_table[position].append("nil")
             enum_table_r.append("nil")
@@ -327,18 +334,13 @@ def generate_enums():
         string += "{} */\n".format(enum_source[i])
         string += "\n"
         string += "enum {}\n".format(enum_name[i])
-        namespaces_list = get_converted_namespaces(enum_name[i])
-        namespaces = ""
-        for i in range(len(namespaces_list)):
-            namespaces = "{}_{}".format(namespaces_list[-(i + 1)], namespaces)
         string += "{\n"
-        previous = None
         enum_count = int(len(enum_table[i]) / 2)
         for j in range(enum_count):
             if enum_table[i][2 * j + 1] != "nil":
-                string += "{}{} = {}".format(namespaces, enum_table[i][2 * j], enum_table[i][2 * j + 1])
+                string += "{} = {}".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
             else:
-                string += "{}{}".format(namespaces, enum_table[i][2 * j])
+                string += "{}".format(enum_table[i][2 * j])
 
             if j < enum_count - 1:
                 string += ","
@@ -438,10 +440,23 @@ def generate_methods(i):
     string += "\n"
     return string
 
+def generate_variables():
+    string = ""
+    string += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    string += "Variable declarations\n"
+    string += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    string += "\n"
+    for i in range(len(variable_name)):
+        string +=("{} {} = {};\n".format(variable_return[i], variable_name[i], variable_value[i]))
+    string += "\n"
+    string += "\n"
+    return string
+
 def generate_conversion():
     string = generate_standard()
     string += generate_forward()
     string += generate_interface_typedefs()
+    string += generate_variables()
     string += generate_enums()
     string += generate_structs()
     string += generate_interface()
@@ -677,6 +692,3 @@ if __name__ == '__main__':
     if print_header:
         print(header_content)
         print_info()
-        for i in range(len(variable_name)):
-            print("{} {} = {}".format(variable_return[i], variable_name[i], variable_value[i]))
-        print()
