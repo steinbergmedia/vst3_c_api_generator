@@ -221,11 +221,11 @@ def parse_enum_value(cursor, namespaces):
         is_negative = cursor_child.kind == cursor_child.kind.UNARY_OPERATOR
         if cursor_child.kind == cursor_child.kind.INTEGER_LITERAL or cursor_child.kind == cursor_child.kind.BINARY_OPERATOR or is_negative:
             if array_to_string(get_values_in_extent(cursor_child), True) != "":
-                enum_table[position].append(array_to_string(get_values_in_extent(cursor_child), not is_negative))
                 values = get_values_in_extent(cursor_child)
                 for i in range(len(values)):
-                    if values in enum_name:
+                    if values[i] in enum_table_l:
                         values[i] = "{}{}".format(namespaces, values[i])
+                enum_table[position].append(array_to_string(values, not is_negative))
                 enum_table_r.append(array_to_string(values, True))
         elif cursor_child.kind == cursor_child.kind.UNEXPOSED_EXPR:
             parse_enum_value(cursor_child, namespaces)
@@ -287,7 +287,12 @@ def generate_typedefs():
     string = ""
     for i in range(len(typedef_name)):
         if typedef_return[i] != []:
-            string += "typedef {} {};\n".format(typedef_return[i], typedef_name[i])
+            if typedef_return[i] != []:
+                if typedef_return[i] in struct_table or typedef_return[i] in interface_name \
+                        or typedef_return[i] in enum_name or typedef_return[i] in typedef_name:
+                    string += "typedef struct {} {};\n".format(typedef_return[i], typedef_name[i])
+                else:
+                    string += "typedef {} {};\n".format(typedef_return[i], typedef_name[i])
     return string
 
 def generate_interface_typedefs():
@@ -298,7 +303,11 @@ def generate_interface_typedefs():
     string += "\n"
     for i in range(len(interface_typedef_name)):
         if typedef_return[i] != []:
-            string += "typedef {} {};\n".format(interface_typedef_return[i], interface_typedef_name[i])
+            if interface_typedef_return[i] in struct_table or interface_typedef_return[i] in interface_name\
+                    or interface_typedef_return[i] in enum_name or interface_typedef_return[i] in typedef_name:
+                string += "typedef struct {} {};\n".format(interface_typedef_return[i], interface_typedef_name[i])
+            else:
+                string += "typedef {} {};\n".format(interface_typedef_return[i], interface_typedef_name[i])
     string += "\n"
     string += "\n"
     return string
