@@ -509,13 +509,13 @@ def print_info():
 
 # ----- utility functions ----------------------------------------------------------------------------------------------
 
+
 def normalise_link(source: str) -> str:
     return source.replace('\\', '/')
 
 
 def convert_cursor_location(cursor_location: SourceLocation) -> str:
     return 'Source: "{}", line {}'.format(normalise_link(cursor_location.file.name), cursor_location.line)
-
 
 
 def convert_namespace(source: str) -> str:
@@ -566,6 +566,7 @@ def tokens_to_string(tokens: List[Token]) -> str:
     result = result.strip()
     return result
 
+
 def remove_namespaces(string):
     if "::" in string:
         string = string[string.rindex("::") + 2:]
@@ -591,11 +592,33 @@ def get_namespaces(cursor):
     namespaces.reverse()
     return namespaces
 
+
 def get_values_in_extent(cursor: Cursor) -> List[str]:
     return [token.spelling for token in cursor.get_tokens()]
 
 
+def get_definition_tokens(cursor: Cursor) -> List[Token]:
+    result = []
+    equal_sign_found = False
+    for token in cursor.get_definition().get_tokens():
+        if token.spelling == '=':
+            equal_sign_found = True
+            continue
+        if not equal_sign_found:
+            continue
+        if token.kind == token.kind.PUNCTUATION or token.kind == token.kind.LITERAL:
+            result.append(token)
+        else:
+            result += get_definition_tokens(token.cursor)
+    return result
+
+
+def replace_enum_value(cursor: Cursor) -> str:
+    return  tokens_to_string(get_definition_tokens(cursor))
+
+
 # ----- conversion function --------------------------------------------------------------------------------------------
+
 
 def convert_method_args_name(source):
     if source == "_iid":
@@ -646,8 +669,7 @@ def convert(source):
     #print("  ", string)
 
     if string in enum_table_l:
-        result = []
-        string = replace_enum_value(source, result)
+        string = replace_enum_value(source)
     elif string in remove_table:
         string = ""
     else:
@@ -670,22 +692,6 @@ def convert(source):
     #print("     ", string)
     #print()
     return string
-
-def replace_enum_value(cursor, result):
-    equal_sign_found = False
-    for token in cursor.get_definition().get_tokens():
-        if token.spelling == "=":
-            equal_sign_found = True
-            continue
-        if not equal_sign_found:
-            continue
-        if token.kind == "token.kind.PUNCTUATION" or token.kind == "token.kind.LITERAL":
-            result.append(token)
-        else:
-            replace_enum_value(token.cursor, result)
-    return result
-
-
 
 
 if __name__ == '__main__':
