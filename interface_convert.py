@@ -206,9 +206,8 @@ def parse_structs(cursor):
 def parse_enum(cursor: Cursor):
     if cursor.kind != cursor.kind.ENUM_DECL:
         return
-    namespace_prefix = create_namespace_prefix(cursor)
     if cursor.spelling:
-        enum_name.append("{}{}".format(namespace_prefix, cursor.spelling))
+        enum_name.append(create_namespace_prefix(cursor) + cursor.spelling)
     else:
         enum_name.append('')
     enum_source.append(convert_cursor_location(cursor.location))
@@ -216,7 +215,7 @@ def parse_enum(cursor: Cursor):
     for cursor_child in cursor.get_children():
         if cursor_child.kind != cursor_child.kind.ENUM_CONSTANT_DECL:
             continue
-        enum_definitions.append(namespace_prefix + cursor_child.spelling)
+        enum_definitions.append(create_namespace_prefix(cursor_child) + cursor_child.spelling)
         enum_definitions.append(replace_expression(cursor_child))
     enum_table.append(enum_definitions)
 
@@ -507,12 +506,11 @@ def array_to_string(array: List, insert_spaces: bool) -> str:
 def tokens_to_string(tokens: List[Token]) -> str:
     result = ''
     previous_kind = None
-
     for token in tokens:
-        if token.spelling == "::":
+        if token.spelling == '::':
             continue
         cursor = token.cursor
-        namespace_prefix = ""
+        namespace_prefix = ''
         if cursor.kind == cursor.kind.DECL_REF_EXPR or cursor.kind == cursor.kind.TYPE_REF:
             namespace_prefix = create_namespace_prefix(cursor)
         if token.spelling == '(' and previous_kind == cursor.kind.TYPE_REF:
@@ -576,7 +574,7 @@ def get_cursor_tokens(cursor: Cursor, use_definition: bool = False) -> List[Toke
             continue
         if not equal_sign_found:
             continue
-        if token.kind == token.kind.PUNCTUATION or token.kind == token.kind.LITERAL:
+        if not use_definition or token.kind == token.kind.PUNCTUATION or token.kind == token.kind.LITERAL:
             result.append(token)
         else:
             result += get_cursor_tokens(token.cursor, use_definition)
