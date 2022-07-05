@@ -579,7 +579,8 @@ def get_namespaces(cursor: Cursor) -> List[str]:
     cursor = cursor.lexical_parent
     namespaces = []
     while cursor and cursor.kind != cursor.kind.TRANSLATION_UNIT:
-        namespaces.append(cursor.spelling)
+        if cursor.spelling:
+            namespaces.append(cursor.spelling)
         cursor = cursor.lexical_parent
     namespaces.reverse()
     return namespaces
