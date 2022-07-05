@@ -189,7 +189,7 @@ def parse_structs(cursor):
 
                 for cursor_child_child in cursor_child.get_children():
                     if cursor_child_child.kind == cursor_child_child.kind.DECL_REF_EXPR:
-                        struct_args = convert(cursor_child_child)
+                        struct_args = replace_expression(cursor_child_child, use_definition=True)
 
                 if struct_args != "":
                     struct_content[position].append(
@@ -202,51 +202,26 @@ def parse_structs(cursor):
 
 # ----- parse enums ---------------------------------------------------------------
 
-def parse_enum(cursor):
-    if cursor.kind == cursor.kind.ENUM_DECL:
-        namespace_prefix = create_namespace_prefix(cursor)
-        if cursor.spelling == "":
-            enum_name.append(cursor.spelling)
-        else:
-            enum_name.append("{}{}".format(namespace_prefix, convert(cursor)))
-        position = len(enum_name) - 1
-        enum_table.append("")
-        enum_table[position] = []
-        enum_source.append(convert_cursor_location(cursor.location))
-        for cursor_child in cursor.get_children():
-            if cursor_child.kind == cursor_child.kind.ENUM_CONSTANT_DECL:
-                namespace_prefix = create_namespace_prefix(cursor_child)
-                enum_table[position].append("{}{}".format(namespace_prefix, cursor_child.spelling))
-                enum_table_l.append(cursor_child.spelling)
-                parse_enum_value(cursor_child)
 
-def parse_enum_value(cursor):
-    children = False
-    position = len(enum_name) - 1
+def parse_enum(cursor: Cursor):
+    if cursor.kind != cursor.kind.ENUM_DECL:
+        return
+    namespace_prefix = create_namespace_prefix(cursor)
+    if cursor.spelling:
+        enum_name.append("{}{}".format(namespace_prefix, cursor.spelling))
+    else:
+        enum_name.append('')
+    enum_source.append(convert_cursor_location(cursor.location))
+    enum_definitions = []
     for cursor_child in cursor.get_children():
-        children = True
-        is_negative = cursor_child.kind == cursor_child.kind.UNARY_OPERATOR
-        if cursor_child.kind == cursor_child.kind.INTEGER_LITERAL or cursor_child.kind == cursor_child.kind.BINARY_OPERATOR or is_negative:
-            if array_to_string(get_values_in_extent(cursor_child), True) != "":
-                values = get_values_in_extent(cursor_child)
-                tokens = list(cursor_child.get_tokens())
-                for i in range(len(tokens)):
-                    if values[i] in enum_table_l:
-                        namespace_prefix = create_namespace_prefix(tokens[i].cursor)
-                        values[i] = "{}{}".format(namespace_prefix, values[i])
-                enum_table[position].append(array_to_string(values, not is_negative))
-                enum_table_r.append(array_to_string(values, True))
-        elif cursor_child.kind == cursor_child.kind.UNEXPOSED_EXPR:
-            parse_enum_value(cursor_child)
-        else:
-            enum_table[position].append("nil")
-            enum_table_r.append("nil")
-    if children == False:
-        enum_table[position].append("nil")
-        enum_table_r.append("nil")
+        if cursor_child.kind != cursor_child.kind.ENUM_CONSTANT_DECL:
+            continue
+        enum_definitions.append(namespace_prefix + cursor_child.spelling)
+        enum_definitions.append(replace_expression(cursor_child))
+    enum_table.append(enum_definitions)
 
 
-# ----- output to string ------------------------------------------------------------------------------------------------
+# ----- output to string ---------------------------------------------------------------
 
 def generate_standard():
     string = "/*----------------------------------------------------------------------------------------------------------------------\n"
@@ -355,7 +330,7 @@ def generate_enums():
         string += "{\n"
         enum_count = int(len(enum_table[i]) / 2)
         for j in range(enum_count):
-            if enum_table[i][2 * j + 1] != "nil":
+            if enum_table[i][2 * j + 1]:
                 string += "{} = {}".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
             else:
                 string += "{}".format(enum_table[i][2 * j])
@@ -590,10 +565,12 @@ def get_values_in_extent(cursor: Cursor) -> List[str]:
     return [token.spelling for token in cursor.get_tokens()]
 
 
-def get_definition_tokens(cursor: Cursor) -> List[Token]:
+def get_cursor_tokens(cursor: Cursor, use_definition: bool = False) -> List[Token]:
     result = []
     equal_sign_found = False
-    for token in cursor.get_definition().get_tokens():
+    if use_definition:
+        cursor = cursor.get_definition()
+    for token in cursor.get_tokens():
         if token.spelling == '=':
             equal_sign_found = True
             continue
@@ -602,12 +579,12 @@ def get_definition_tokens(cursor: Cursor) -> List[Token]:
         if token.kind == token.kind.PUNCTUATION or token.kind == token.kind.LITERAL:
             result.append(token)
         else:
-            result += get_definition_tokens(token.cursor)
+            result += get_cursor_tokens(token.cursor, use_definition)
     return result
 
 
-def replace_enum_value(cursor: Cursor) -> str:
-    return tokens_to_string(get_definition_tokens(cursor))
+def replace_expression(cursor: Cursor, use_definition: bool = False) -> str:
+    return tokens_to_string(get_cursor_tokens(cursor, use_definition))
 
 
 def convert_method_args_name(source: str) -> str:
@@ -619,7 +596,7 @@ def convert_method_args_name(source: str) -> str:
 # ----- conversion function --------------------------------------------------------------------------------------------
 
 
-def convert(source):
+def convert(source: [Cursor, Type]) -> str:
     found_const = False
     found_const_end = False
     found_unsigned = False
@@ -633,10 +610,8 @@ def convert(source):
         string = source.spelling
     elif type(source) == Type:
         string = convert_namespace(source.spelling)
-    elif type(source) == str:
-        string = source
     else:
-        raise(TypeError("Source is neither cursor nor type"))
+        raise(TypeError("Source is neither Cursor nor Type"))
     #print(string)
     if "const " in string:
         string = string.replace("const ", "")
@@ -662,9 +637,7 @@ def convert(source):
     string = remove_namespaces(string)
     #print("  ", string)
 
-    if string in enum_table_l:
-        string = replace_enum_value(source)
-    elif string in remove_table:
+    if string in remove_table:
         string = ""
     else:
         string = ("{}{}".format(namespace_prefix, string))
@@ -725,8 +698,6 @@ if __name__ == '__main__':
 
     enum_name = []
     enum_table = []
-    enum_table_l = []
-    enum_table_r = []
     enum_source = []
 
     typedef_name = []
