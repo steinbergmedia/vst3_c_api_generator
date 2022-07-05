@@ -522,14 +522,6 @@ def convert_namespace(source: str) -> str:
     return source.replace('::', '_')
 
 
-def create_namespace_prefix_from_source(source):
-    namespaces_list = get_converted_namespaces(source)
-    namespaces = ""
-    for j in range(len(namespaces_list)):
-        namespaces = "{}_{}".format(namespaces_list[-(j + 1)], namespaces)
-    return namespaces
-
-
 def array_to_string(array: List, insert_spaces: bool) -> str:
     divider = ''
     if insert_spaces:
@@ -567,20 +559,20 @@ def tokens_to_string(tokens: List[Token]) -> str:
     return result
 
 
-def remove_namespaces(string):
-    if "::" in string:
-        string = string[string.rindex("::") + 2:]
-    return string
+def remove_namespaces(string: str) -> str:
+    if '::' not in string:
+        return string
+    return string[string.rindex('::') + 2:]
 
 
-def create_namespace_prefix(cursor):
+def create_namespace_prefix(cursor: Cursor) -> str:
     namespaces = get_namespaces(cursor)
     if not namespaces:
-        return ""
-    return "_".join(namespaces) + "_"
+        return ''
+    return '_'.join(namespaces) + '_'
 
 
-def get_namespaces(cursor):
+def get_namespaces(cursor: Cursor) -> List[str]:
     cursor_definition = cursor.get_definition()
     if cursor_definition:
         cursor = cursor_definition
@@ -614,16 +606,17 @@ def get_definition_tokens(cursor: Cursor) -> List[Token]:
 
 
 def replace_enum_value(cursor: Cursor) -> str:
-    return  tokens_to_string(get_definition_tokens(cursor))
+    return tokens_to_string(get_definition_tokens(cursor))
+
+
+def convert_method_args_name(source: str) -> str:
+    if source == '_iid':
+        return 'iid'
+    return source
 
 
 # ----- conversion function --------------------------------------------------------------------------------------------
 
-
-def convert_method_args_name(source):
-    if source == "_iid":
-        return "iid"
-    return source
 
 def convert(source):
     found_const = False
