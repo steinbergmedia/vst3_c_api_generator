@@ -532,12 +532,6 @@ def tokens_to_string(tokens: List[Token]) -> str:
     return result
 
 
-def remove_namespaces(string: str) -> str:
-    if '::' not in string:
-        return string
-    return string[string.rindex('::') + 2:]
-
-
 def create_namespace_prefix(cursor: Cursor) -> str:
     namespaces = get_namespaces(cursor)
     if not namespaces:
@@ -602,7 +596,7 @@ def convert(source: [Cursor, Type]) -> str:
     found_ptr = False
     found_lvr = False
     found_ptr_lvr = False
-    namespace_prefix = ""
+    namespace_prefix = ''
     if type(source) == Cursor:
         namespace_prefix = create_namespace_prefix(source)
         string = source.spelling
@@ -632,13 +626,12 @@ def convert(source: [Cursor, Type]) -> str:
     elif "&" in string:
         string = string.replace(" &", "")
         found_lvr = True
-    string = remove_namespaces(string)
     #print("  ", string)
 
     if string in remove_table:
-        string = ""
-    else:
-        string = ("{}{}".format(namespace_prefix, string))
+        string = ''
+    elif type(source) == Cursor:
+        string = namespace_prefix + string
 
     if found_unsigned:
         string = "unsigned {}".format(string)
