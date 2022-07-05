@@ -646,7 +646,8 @@ def convert(source):
     #print("  ", string)
 
     if string in enum_table_l:
-        string = convert(enum_table_r[enum_table_l.index(string)])
+        result = []
+        string = replace_enum_value(source, result)
     elif string in remove_table:
         string = ""
     else:
@@ -669,6 +670,22 @@ def convert(source):
     #print("     ", string)
     #print()
     return string
+
+def replace_enum_value(cursor, result):
+    equal_sign_found = False
+    for token in cursor.get_definition().get_tokens():
+        if token.spelling == "=":
+            equal_sign_found = True
+            continue
+        if not equal_sign_found:
+            continue
+        if token.kind == "token.kind.PUNCTUATION" or token.kind == "token.kind.LITERAL":
+            result.append(token)
+        else:
+            replace_enum_value(token.cursor, result)
+    return result
+
+
 
 
 if __name__ == '__main__':
