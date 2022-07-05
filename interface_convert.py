@@ -3,7 +3,7 @@ from optparse import OptionParser
 from pathlib import Path
 from typing import List
 
-from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token
+from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token, Type
 
 from clang_helpers import set_library_path
 
@@ -30,7 +30,7 @@ def parsing(cursor):
     parse_enum(cursor)
     parse_structs(cursor)
     parse_IID(cursor)
-    parse_typedefs(cursor)
+    store_typedefs(cursor)
     parse_variables(cursor)
 
 def parse_IID(cursor):
@@ -46,23 +46,30 @@ def get_tokens_from_extent(cursor):
 
 # ----- parse typedefs ---------------------------------------------------------------
 
-def parse_typedefs(cursor):
-    if cursor.kind == cursor.kind.TYPEDEF_DECL or cursor.kind == cursor.kind.TYPE_ALIAS_DECL:
-        if cursor.underlying_typedef_type.kind == cursor.type.kind.CONSTANTARRAY:
-            typedef_return.append(convert(cursor.underlying_typedef_type.element_type.spelling))
-            typedef_name.append("{}[{}]".format(convert(cursor.type.spelling), cursor.underlying_typedef_type.element_count))
-        else:
-            typedef_return.append(convert(cursor.underlying_typedef_type.spelling))
-            typedef_name.append(convert(cursor.type.spelling))
+def store_typedefs(cursor):
+    return_type, name = parse_typedefs(cursor)
+    if return_type and name:
+        typedef_return.append(return_type)
+        typedef_name.append(name)
 
-def parse_interface_typedefs(cursor):
-    if cursor.kind == cursor.kind.TYPEDEF_DECL or cursor.kind == cursor.kind.TYPE_ALIAS_DECL:
-        if cursor.underlying_typedef_type.kind == cursor.type.kind.CONSTANTARRAY:
-            interface_typedef_return.append(convert(cursor.underlying_typedef_type.element_type.spelling))
-            interface_typedef_name.append("{}[{}]".format(convert(cursor.type.spelling), cursor.underlying_typedef_type.element_count))
-        else:
-            interface_typedef_return.append(convert(cursor.underlying_typedef_type.spelling))
-            interface_typedef_name.append(convert(cursor.type.spelling))
+
+def store_interface_typedefs(cursor):
+    return_type, name = parse_typedefs(cursor)
+    if return_type and name:
+        interface_typedef_return.append(return_type)
+        interface_typedef_name.append(name)
+
+
+def parse_typedefs(cursor):
+    if cursor.kind != cursor.kind.TYPEDEF_DECL and cursor.kind != cursor.kind.TYPE_ALIAS_DECL:
+        return None, None
+    if cursor.underlying_typedef_type.kind == cursor.type.kind.CONSTANTARRAY:
+        return_type = convert(cursor.underlying_typedef_type.element_type)
+        name = "{}[{}]".format(convert(cursor.type), cursor.underlying_typedef_type.element_count)
+    else:
+        return_type = convert(cursor.underlying_typedef_type)
+        name = convert(cursor)
+    return return_type, name
 
 # ----- parse interfaces ---------------------------------------------------------------
 
@@ -73,7 +80,7 @@ def parse_interfaces(cursor):
             return
         interface_source.append(convert_cursor_location(cursor.location))
         interface_description.append(cursor.brief_comment)
-        interface_name.append(convert(cursor.type.spelling))
+        interface_name.append(convert(cursor))
         position = len(interface_name) - 1
 
         inherits_table.append("")
@@ -90,7 +97,7 @@ def parse_interfaces(cursor):
 
         method_count_local = 0
         for cursor_child in children:
-            parse_interface_typedefs(cursor_child)
+            store_interface_typedefs(cursor_child)
             parse_enum(cursor_child)
             parse_inheritance(cursor_child)
             parse_variables(cursor_child)
@@ -122,7 +129,7 @@ def parse_methods(cursor, method_count_local, current_interface):
 
         method_name[position].append(cursor.spelling)
 
-        method_return[position].append(convert(cursor.result_type.spelling))
+        method_return[position].append(convert(cursor.result_type))
         method_args_content = parse_method_arguments(cursor, current_interface)
         method_args[position][method_count_local - 1].append("".join(method_args_content))
     return method_count_local
@@ -133,19 +140,21 @@ def parse_method_arguments(cursor, current_interface):
     for cursor_child in cursor.get_arguments():
         if p > 0:
             method_args_content.append(", ")
-        method_args_content.append(convert(cursor_child.type.spelling))
+        method_args_content.append(convert(cursor_child.type))
         method_args_content.append(" ")
-        method_args_content.append(convert(cursor_child.spelling))
+        method_args_content.append(convert_method_args_name(cursor_child.spelling))
         p = p + 1
     return method_args_content
+
 
 # ----- parse variables ---------------------------------------------------------------
 
 
 def parse_variables(cursor):
     if cursor.kind == cursor.kind.VAR_DECL and cursor.type.kind == cursor.type.kind.TYPEDEF:
-        variable_name.append(convert(cursor.spelling))
-        variable_return.append(convert(cursor.type.spelling))
+        variable_return.append(convert(cursor.type))
+        namespace_prefix = create_namespace_prefix(cursor)
+        variable_name.append("{}{}".format(namespace_prefix, convert(cursor)))
         last_cursor_child = list(cursor.get_children())[-1]
         grand_children = list(last_cursor_child.get_children())
         if len(grand_children) == 1 and grand_children[0].kind == cursor.kind.STRING_LITERAL:
@@ -168,19 +177,19 @@ def parse_structs(cursor):
                 struct_args = ""
 
                 if r == 0:
-                    struct_table.append(convert(cursor.type.spelling))
+                    struct_table.append(convert(cursor))
                     position = len(struct_table) - 1
                     struct_source.append(convert_cursor_location(cursor.location))
                     struct_content.append("")
                     struct_content[position] = []
                 if cursor_child.type.kind == cursor_child.type.kind.CONSTANTARRAY:
-                    struct_return = convert(cursor_child.type.element_type.spelling)
+                    struct_return = convert(cursor_child.type.element_type)
                 else:
-                    struct_return = convert(cursor_child.type.spelling)
+                    struct_return = convert(cursor_child.type)
 
                 for cursor_child_child in cursor_child.get_children():
                     if cursor_child_child.kind == cursor_child_child.kind.DECL_REF_EXPR:
-                        struct_args = convert(cursor_child_child.spelling)
+                        struct_args = convert(cursor_child_child)
 
                 if struct_args != "":
                     struct_content[position].append(
@@ -195,25 +204,23 @@ def parse_structs(cursor):
 
 def parse_enum(cursor):
     if cursor.kind == cursor.kind.ENUM_DECL:
+        namespace_prefix = create_namespace_prefix(cursor)
         if cursor.spelling == "":
             enum_name.append(cursor.spelling)
         else:
-            enum_name.append(convert(cursor.type.spelling))
+            enum_name.append("{}{}".format(namespace_prefix, convert(cursor)))
         position = len(enum_name) - 1
         enum_table.append("")
         enum_table[position] = []
         enum_source.append(convert_cursor_location(cursor.location))
-        namespaces_list = get_converted_namespaces(enum_name[-1])
-        namespaces = ""
-        for j in range(len(namespaces_list)):
-            namespaces = "{}_{}".format(namespaces_list[-(j + 1)], namespaces)
         for cursor_child in cursor.get_children():
             if cursor_child.kind == cursor_child.kind.ENUM_CONSTANT_DECL:
-                enum_table[position].append("{}{}".format(namespaces, cursor_child.spelling))
+                namespace_prefix = create_namespace_prefix(cursor_child)
+                enum_table[position].append("{}{}".format(namespace_prefix, cursor_child.spelling))
                 enum_table_l.append(cursor_child.spelling)
-                parse_enum_value(cursor_child, namespaces)
+                parse_enum_value(cursor_child)
 
-def parse_enum_value(cursor, namespaces):
+def parse_enum_value(cursor):
     children = False
     position = len(enum_name) - 1
     for cursor_child in cursor.get_children():
@@ -222,13 +229,15 @@ def parse_enum_value(cursor, namespaces):
         if cursor_child.kind == cursor_child.kind.INTEGER_LITERAL or cursor_child.kind == cursor_child.kind.BINARY_OPERATOR or is_negative:
             if array_to_string(get_values_in_extent(cursor_child), True) != "":
                 values = get_values_in_extent(cursor_child)
-                for i in range(len(values)):
+                tokens = list(cursor_child.get_tokens())
+                for i in range(len(tokens)):
                     if values[i] in enum_table_l:
-                        values[i] = "{}{}".format(namespaces, values[i])
+                        namespace_prefix = create_namespace_prefix(tokens[i].cursor)
+                        values[i] = "{}{}".format(namespace_prefix, values[i])
                 enum_table[position].append(array_to_string(values, not is_negative))
                 enum_table_r.append(array_to_string(values, True))
         elif cursor_child.kind == cursor_child.kind.UNEXPOSED_EXPR:
-            parse_enum_value(cursor_child, namespaces)
+            parse_enum_value(cursor_child)
         else:
             enum_table[position].append("nil")
             enum_table_r.append("nil")
@@ -319,14 +328,14 @@ def generate_forward():
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
     for i in range(len(interface_name)):
-        string += "struct {};\n".format(convert(interface_name[i]))
+        string += "struct {};\n".format(interface_name[i])
     string += "\n"
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "Struct forward declarations\n"
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
     for i in range(len(struct_table)):
-        string += "struct {};\n".format(convert(struct_table[i]))
+        string += "struct {};\n".format(struct_table[i])
     string += "\n"
     return string
 
@@ -508,16 +517,17 @@ def convert_cursor_location(cursor_location: SourceLocation) -> str:
     return 'Source: "{}", line {}'.format(normalise_link(cursor_location.file.name), cursor_location.line)
 
 
-def normalise_brackets(source):
-    brackets = ""
-    if "[" in source:
-        brackets = source[source.index("["):]
-        source = source[:source.index("[")]
-    return source, brackets
-
 
 def convert_namespace(source: str) -> str:
     return source.replace('::', '_')
+
+
+def create_namespace_prefix_from_source(source):
+    namespaces_list = get_converted_namespaces(source)
+    namespaces = ""
+    for j in range(len(namespaces_list)):
+        namespaces = "{}_{}".format(namespaces_list[-(j + 1)], namespaces)
+    return namespaces
 
 
 def array_to_string(array: List, insert_spaces: bool) -> str:
@@ -530,25 +540,56 @@ def array_to_string(array: List, insert_spaces: bool) -> str:
 def tokens_to_string(tokens: List[Token]) -> str:
     result = ''
     previous_kind = None
+
     for token in tokens:
-        if token.spelling == '(' and previous_kind == token.cursor.kind.TYPE_REF:
+        if token.spelling == "::":
+            continue
+        cursor = token.cursor
+        namespace_prefix = ""
+        if cursor.kind == cursor.kind.DECL_REF_EXPR or cursor.kind == cursor.kind.TYPE_REF:
+            namespace_prefix = create_namespace_prefix(cursor)
+        if token.spelling == '(' and previous_kind == cursor.kind.TYPE_REF:
             # e.g.: uint64 (0xffffffff)
             result += ' '
         if token.spelling == ')':
             # insert space after closing bracket, if not followed by another one
             if result and result[-1] == ')':
                 result.strip()
-            result += f'{token.spelling} '
-        elif token.cursor.kind == token.cursor.kind.BINARY_OPERATOR:
+            result += f'{namespace_prefix}{token.spelling} '
+        elif cursor.kind == cursor.kind.BINARY_OPERATOR:
             # surround binary operators with spaces
             result = result.strip()
             result += f' {token.spelling} '
         else:
-            result += token.spelling
-        previous_kind = token.cursor.kind
+            result += namespace_prefix + token.spelling
+        previous_kind = cursor.kind
     result = result.strip()
     return result
 
+def remove_namespaces(string):
+    if "::" in string:
+        string = string[string.rindex("::") + 2:]
+    return string
+
+
+def create_namespace_prefix(cursor):
+    namespaces = get_namespaces(cursor)
+    if not namespaces:
+        return ""
+    return "_".join(namespaces) + "_"
+
+
+def get_namespaces(cursor):
+    cursor_definition = cursor.get_definition()
+    if cursor_definition:
+        cursor = cursor_definition
+    cursor = cursor.lexical_parent
+    namespaces = []
+    while cursor and cursor.kind != cursor.kind.TRANSLATION_UNIT:
+        namespaces.append(cursor.spelling)
+        cursor = cursor.lexical_parent
+    namespaces.reverse()
+    return namespaces
 
 def get_values_in_extent(cursor: Cursor) -> List[str]:
     return [token.spelling for token in cursor.get_tokens()]
@@ -556,75 +597,78 @@ def get_values_in_extent(cursor: Cursor) -> List[str]:
 
 # ----- conversion function --------------------------------------------------------------------------------------------
 
+def convert_method_args_name(source):
+    if source == "_iid":
+        return "iid"
+    return source
+
 def convert(source):
     found_const = False
     found_const_end = False
     found_unsigned = False
     found_doubleptr = False
     found_ptr = False
-    #found_rvr = False
     found_lvr = False
     found_ptr_lvr = False
-
-    source = str(source)
-    #print(source)
-
-    if "const " in source:
-        source = source.replace("const ", "")
+    namespace_prefix = ""
+    if type(source) == Cursor:
+        namespace_prefix = create_namespace_prefix(source)
+        string = source.spelling
+    elif type(source) == Type:
+        string = convert_namespace(source.spelling)
+    elif type(source) == str:
+        string = source
+    else:
+        raise(TypeError("Source is neither cursor nor type"))
+    #print(string)
+    if "const " in string:
+        string = string.replace("const ", "")
         found_const = True
-    if source.endswith("const"):
-        source = source.replace("const", "")
+    if string.endswith("const"):
+        string = string.replace("const", "")
         found_const_end = True
-    if "unsigned" in source:
-        source = source.replace("unsigned ", "")
+    if "unsigned" in string:
+        string = string.replace("unsigned ", "")
         found_unsigned = True
-    if "*&" in source:
-        source = source.replace(" *&", "")
+    if "*&" in string:
+        string = string.replace(" *&", "")
         found_ptr_lvr = True
-    elif "**" in source:
-        source = source.replace(" **", "")
+    elif "**" in string:
+        string = string.replace(" **", "")
         found_doubleptr = True
-    elif "*" in source:
-        source = source.replace(" *", "")
+    elif "*" in string:
+        string = string.replace(" *", "")
         found_ptr = True
-    #elif "&&" in source:
-    #    source = source.replace(" &&", "")
-    #    found_rvr = True
-    elif "&" in source:
-        source = source.replace(" &", "")
+    elif "&" in string:
+        string = string.replace(" &", "")
         found_lvr = True
-    source, brackets = normalise_brackets(source)
-    source = convert_namespace(source)
-    #print("  ", source)
+    string = remove_namespaces(string)
+    #print("  ", string)
 
-    if source in enum_table_l:
-        source = convert(enum_table_r[enum_table_l.index(source)])
-    elif source == "_iid":
-        source = "iid"
-    elif source in remove_table:
-        source = ""
-
-    source = source + brackets
+    if string in enum_table_l:
+        string = convert(enum_table_r[enum_table_l.index(string)])
+    elif string in remove_table:
+        string = ""
+    else:
+        string = ("{}{}".format(namespace_prefix, string))
 
     if found_unsigned:
-        source = "unsigned {}".format(source)
+        string = "unsigned {}".format(string)
     if found_const:
-        source = "const {}".format(source)
+        string = "const {}".format(string)
     if found_doubleptr:
-        source = "{}**".format(source)
+        string = "{}**".format(string)
     if found_ptr:
-        source = "{}*".format(source)
-    #if found_rvr:
-    #    source = "{}&&".format(source)
+        string = "{}*".format(string)
     if found_lvr:
-        source = "{}*".format(source)
+        string = "{}*".format(string)
     if found_ptr_lvr:
-        source = "{}**".format(source)
+        string = "{}**".format(string)
     if found_const_end:
-        source = "{} const".format(source)
-    #print("     ", source)
+        string = "{} const".format(string)
+    #print("     ", string)
     #print()
-    return source
+    return string
 
 
 if __name__ == '__main__':
