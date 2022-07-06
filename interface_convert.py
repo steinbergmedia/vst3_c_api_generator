@@ -3,7 +3,7 @@ from optparse import OptionParser
 from pathlib import Path
 from typing import List
 
-from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token, Type
+from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token, Type, CursorKind
 
 from clang_helpers import set_library_path
 
@@ -129,7 +129,7 @@ def parse_methods(cursor, method_count_local, current_interface):
 
         method_name[position].append(cursor.spelling)
 
-        method_return[position].append(convert_type(cursor.result_type))
+        method_return[position].append(create_struct_prefix(cursor.result_type) + convert_type(cursor.result_type))
         method_args_content = parse_method_arguments(cursor, current_interface)
         method_args[position][method_count_local - 1].append("".join(method_args_content))
     return method_count_local
@@ -140,7 +140,7 @@ def parse_method_arguments(cursor, current_interface):
     for cursor_child in cursor.get_arguments():
         if p > 0:
             method_args_content.append(", ")
-        method_args_content.append(convert_type(cursor_child.type))
+        method_args_content.append(create_struct_prefix(cursor_child.type) + convert_type(cursor_child.type))
         method_args_content.append(" ")
         method_args_content.append(convert_method_args_name(cursor_child.spelling))
         p = p + 1
@@ -193,10 +193,8 @@ def parse_structs(cursor):
                 else:
                     cursor_child_type = cursor_child.type
                     struct_return = convert_type(cursor_child_type)
-                while cursor_child_type.kind == cursor_child_type.kind.POINTER:
-                    cursor_child_type = cursor_child_type.get_pointee()
-                if cursor_child_type.get_declaration().kind == cursor_child.kind.STRUCT_DECL or cursor_child_type.get_declaration().kind == cursor_child.kind.CLASS_DECL:
-                    struct_return = "struct " + struct_return
+                struct_return = create_struct_prefix(cursor_child_type) + struct_return
+
 
                 #for cursor_child_child in cursor_child.get_children():
                 #    if cursor_child_child.kind == cursor_child_child.kind.DECL_REF_EXPR:
@@ -209,6 +207,13 @@ def parse_structs(cursor):
                     struct_content[position].append("{} {};".format(struct_return, cursor_child.spelling))
 
                 r = True
+
+def create_struct_prefix(cursor_type: Type) -> str:
+    while cursor_type.kind == cursor_type.kind.POINTER or cursor_type.kind == cursor_type.kind.LVALUEREFERENCE:
+        cursor_type = cursor_type.get_pointee()
+    if cursor_type.get_declaration().kind == CursorKind.STRUCT_DECL or cursor_type.get_declaration().kind == CursorKind.CLASS_DECL:
+        return "struct "
+    return ""
 
 
 # ----- parse enums ---------------------------------------------------------------
@@ -336,7 +341,7 @@ def generate_enums():
         string += "/*----------------------------------------------------------------------------------------------------------------------\n"
         string += "{} */\n".format(enum_source[i])
         string += "\n"
-        string += "enum {}\n".format(enum_name[i])
+        string += "typedef enum\n"
         string += "{\n"
         enum_count = int(len(enum_table[i]) / 2)
         for j in range(enum_count):
@@ -347,7 +352,7 @@ def generate_enums():
             if j < enum_count - 1:
                 string += ","
             string += "\n"
-        string += "};\n"
+        string += "}} {};\n".format(enum_name[i])
         string += "\n"
     string += "\n"
     return string
@@ -393,7 +398,7 @@ def generate_interface():
         string += "\n"
         string += "typedef struct {}\n".format(interface_name[i])
         string += "{\n"
-        string += "    {}Vtbl* lpVtbl;\n".format(interface_name[i])
+        string += "    struct {}Vtbl* lpVtbl;\n".format(interface_name[i])
         string += "{} {};\n".format("}", interface_name[i])
         string += "\n"
         if interface_name[i] in ID_table:
@@ -513,7 +518,7 @@ def array_to_string(array: List, insert_spaces: bool) -> str:
 def tokens_to_string(tokens: List[Token]) -> str:
     result = ''
     previous_kind = None
-    for token in tokens:
+    for i, token in enumerate(tokens):
         if token.spelling == '::':
             continue
         cursor = token.cursor
@@ -527,13 +532,16 @@ def tokens_to_string(tokens: List[Token]) -> str:
             # insert space after closing bracket, if not followed by another one
             if result and result[-1] == ')':
                 result.strip()
-            result += f'{namespace_prefix}{token.spelling} '
+            result += f'{token.spelling} '
         elif cursor.kind == cursor.kind.BINARY_OPERATOR:
             # surround binary operators with spaces
             result = result.strip()
             result += f' {token.spelling} '
         else:
-            result += namespace_prefix + token.spelling
+            if cursor.kind == cursor.kind.TYPE_REF and (i >= len(tokens) - 1 or tokens[i + 1].spelling != ")"):
+                result += "(" + namespace_prefix + token.spelling + ")"
+            else:
+                result += namespace_prefix + token.spelling
         previous_kind = cursor.kind
     result = result.strip()
     return result
