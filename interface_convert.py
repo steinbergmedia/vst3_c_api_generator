@@ -184,11 +184,17 @@ def parse_structs(cursor):
                     struct_content[position] = []
 
                 if cursor_child.type.kind == cursor_child.type.kind.CONSTANTARRAY:
-                    struct_return = convert(cursor_child.type.element_type)
+                    cursor_child_type = cursor_child.type.element_type
+                    struct_return = convert(cursor_child_type)
                     cursor_child_child = list(cursor_child.get_children())[-1]
                     struct_args = replace_expression(cursor_child_child, use_definition=True)
                 else:
-                    struct_return = convert(cursor_child.type)
+                    cursor_child_type = cursor_child.type
+                    struct_return = convert(cursor_child_type)
+                while cursor_child_type.kind == cursor_child_type.kind.POINTER:
+                    cursor_child_type = cursor_child_type.get_pointee()
+                if cursor_child_type.get_declaration().kind == cursor_child.kind.STRUCT_DECL or cursor_child_type.get_declaration().kind == cursor_child.kind.CLASS_DECL:
+                    struct_return = "struct " + struct_return
 
                 #for cursor_child_child in cursor_child.get_children():
                 #    if cursor_child_child.kind == cursor_child_child.kind.DECL_REF_EXPR:
