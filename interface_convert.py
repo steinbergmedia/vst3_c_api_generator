@@ -3,7 +3,7 @@ from optparse import OptionParser
 from pathlib import Path
 from typing import List
 
-from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token, Type
+from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token
 
 from clang_helpers import set_library_path
 
@@ -64,11 +64,11 @@ def parse_typedefs(cursor):
     if cursor.kind != cursor.kind.TYPEDEF_DECL and cursor.kind != cursor.kind.TYPE_ALIAS_DECL:
         return None, None
     if cursor.underlying_typedef_type.kind == cursor.type.kind.CONSTANTARRAY:
-        return_type = convert(cursor.underlying_typedef_type.element_type)
-        name = "{}[{}]".format(convert(cursor.type), cursor.underlying_typedef_type.element_count)
+        return_type = convert_type(cursor.underlying_typedef_type.element_type)
+        name = "{}[{}]".format(convert_type(cursor.type), cursor.underlying_typedef_type.element_count)
     else:
-        return_type = convert(cursor.underlying_typedef_type)
-        name = convert(cursor)
+        return_type = convert_type(cursor.underlying_typedef_type)
+        name = convert_cursor(cursor)
     return return_type, name
 
 # ----- parse interfaces ---------------------------------------------------------------
@@ -80,7 +80,7 @@ def parse_interfaces(cursor):
             return
         interface_source.append(convert_cursor_location(cursor.location))
         interface_description.append(cursor.brief_comment)
-        interface_name.append(convert(cursor))
+        interface_name.append(convert_cursor(cursor))
         position = len(interface_name) - 1
 
         inherits_table.append("")
@@ -129,7 +129,7 @@ def parse_methods(cursor, method_count_local, current_interface):
 
         method_name[position].append(cursor.spelling)
 
-        method_return[position].append(convert(cursor.result_type))
+        method_return[position].append(convert_type(cursor.result_type))
         method_args_content = parse_method_arguments(cursor, current_interface)
         method_args[position][method_count_local - 1].append("".join(method_args_content))
     return method_count_local
@@ -140,7 +140,7 @@ def parse_method_arguments(cursor, current_interface):
     for cursor_child in cursor.get_arguments():
         if p > 0:
             method_args_content.append(", ")
-        method_args_content.append(convert(cursor_child.type))
+        method_args_content.append(convert_type(cursor_child.type))
         method_args_content.append(" ")
         method_args_content.append(convert_method_args_name(cursor_child.spelling))
         p = p + 1
@@ -152,8 +152,8 @@ def parse_method_arguments(cursor, current_interface):
 
 def parse_variables(cursor):
     if cursor.kind == cursor.kind.VAR_DECL and cursor.type.kind == cursor.type.kind.TYPEDEF:
-        variable_return.append(convert(cursor.type))
-        variable_name.append(convert(cursor))
+        variable_return.append(convert_type(cursor.type))
+        variable_name.append(convert_cursor(cursor))
         last_cursor_child = list(cursor.get_children())[-1]
         grand_children = list(last_cursor_child.get_children())
         if len(grand_children) == 1 and grand_children[0].kind == cursor.kind.STRING_LITERAL:
@@ -177,7 +177,7 @@ def parse_structs(cursor):
                 struct_args = ""
 
                 if not r:
-                    struct_table.append(convert(cursor))
+                    struct_table.append(convert_cursor(cursor))
                     position = len(struct_table) - 1
                     struct_source.append(convert_cursor_location(cursor.location))
                     struct_content.append("")
@@ -185,12 +185,12 @@ def parse_structs(cursor):
 
                 if cursor_child.type.kind == cursor_child.type.kind.CONSTANTARRAY:
                     cursor_child_type = cursor_child.type.element_type
-                    struct_return = convert(cursor_child_type)
+                    struct_return = convert_type(cursor_child_type)
                     cursor_child_child = list(cursor_child.get_children())[-1]
                     struct_args = replace_expression(cursor_child_child, use_definition=True)
                 else:
                     cursor_child_type = cursor_child.type
-                    struct_return = convert(cursor_child_type)
+                    struct_return = convert_type(cursor_child_type)
                 while cursor_child_type.kind == cursor_child_type.kind.POINTER:
                     cursor_child_type = cursor_child_type.get_pointee()
                 if cursor_child_type.get_declaration().kind == cursor_child.kind.STRUCT_DECL or cursor_child_type.get_declaration().kind == cursor_child.kind.CLASS_DECL:
@@ -598,8 +598,15 @@ def convert_method_args_name(source: str) -> str:
 
 # ----- conversion function --------------------------------------------------------------------------------------------
 
+def convert_cursor(cursor) -> str:
+    namespace_prefix = create_namespace_prefix(cursor)
+    string = cursor.spelling
+    string = namespace_prefix + string
+    return string
 
-def convert(source: [Cursor, Type]) -> str:
+
+
+def convert_type(type) -> str:
     found_const = False
     found_const_end = False
     found_unsigned = False
@@ -608,13 +615,7 @@ def convert(source: [Cursor, Type]) -> str:
     found_lvr = False
     found_ptr_lvr = False
     namespace_prefix = ''
-    if type(source) == Cursor:
-        namespace_prefix = create_namespace_prefix(source)
-        string = source.spelling
-    elif type(source) == Type:
-        string = convert_namespace(source.spelling)
-    else:
-        raise(TypeError("Source is neither Cursor nor Type"))
+    string = convert_namespace(type.spelling)
     #print(string)
     if "const " in string:
         string = string.replace("const ", "")
@@ -641,8 +642,6 @@ def convert(source: [Cursor, Type]) -> str:
 
     if string in remove_table:
         string = ''
-    elif type(source) == Cursor:
-        string = namespace_prefix + string
 
     if found_unsigned:
         string = "unsigned {}".format(string)
