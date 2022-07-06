@@ -156,12 +156,14 @@ def parse_variables(cursor):
         variable_name.append(convert_cursor(cursor))
         last_cursor_child = list(cursor.get_children())[-1]
         grand_children = list(last_cursor_child.get_children())
-        if len(grand_children) == 1 and grand_children[0].kind == cursor.kind.STRING_LITERAL:
-            # Expand only macros with single string literals
-            variable_value.append(grand_children[0].spelling)
+        if len(grand_children) == 1:
+            if grand_children[0].kind == cursor.kind.STRING_LITERAL:
+                # Expand only macros with single string literals
+                variable_value.append(grand_children[0].spelling)
+            else:
+                variable_value.append(replace_expression(grand_children[0], use_definition=True))
         else:
-            value = tokens_to_string(list(last_cursor_child.get_tokens()))
-            variable_value.append(value)
+            variable_value.append(replace_expression(last_cursor_child, use_definition=True))
 
 # ----- parse structs ---------------------------------------------------------------
 
@@ -562,8 +564,6 @@ def get_values_in_extent(cursor: Cursor) -> List[str]:
     return [token.spelling for token in cursor.get_tokens()]
 
 
-
-
 def get_cursor_tokens(cursor: Cursor, use_definition: bool) -> List[Token]:
     result = []
     equal_sign_found = False
@@ -582,7 +582,11 @@ def get_cursor_tokens(cursor: Cursor, use_definition: bool) -> List[Token]:
         if not use_definition or token.kind == token.kind.PUNCTUATION or token.kind == token.kind.LITERAL:
             result.append(token)
         else:
-            result += get_cursor_tokens(token.cursor, use_definition)
+            token_cursor = token.cursor
+            if token_cursor.kind == token_cursor.kind.TYPE_REF:
+                result.append(token)
+            else:
+                result += get_cursor_tokens(token_cursor, use_definition)
     return result
 
 
