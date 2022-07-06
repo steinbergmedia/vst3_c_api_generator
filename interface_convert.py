@@ -153,8 +153,7 @@ def parse_method_arguments(cursor, current_interface):
 def parse_variables(cursor):
     if cursor.kind == cursor.kind.VAR_DECL and cursor.type.kind == cursor.type.kind.TYPEDEF:
         variable_return.append(convert(cursor.type))
-        namespace_prefix = create_namespace_prefix(cursor)
-        variable_name.append("{}{}".format(namespace_prefix, convert(cursor)))
+        variable_name.append(convert(cursor))
         last_cursor_child = list(cursor.get_children())[-1]
         grand_children = list(last_cursor_child.get_children())
         if len(grand_children) == 1 and grand_children[0].kind == cursor.kind.STRING_LITERAL:
@@ -169,27 +168,31 @@ def parse_variables(cursor):
 
 def parse_structs(cursor):
     if cursor.kind == cursor.kind.STRUCT_DECL and cursor.spelling not in blacklist:
-        r = 0
+        r = False
         position = len(struct_table) - 1
         for cursor_child in cursor.get_children():
             parse_enum(cursor_child)
+
             if cursor_child.kind == cursor_child.kind.FIELD_DECL:
                 struct_args = ""
 
-                if r == 0:
+                if not r:
                     struct_table.append(convert(cursor))
                     position = len(struct_table) - 1
                     struct_source.append(convert_cursor_location(cursor.location))
                     struct_content.append("")
                     struct_content[position] = []
+
                 if cursor_child.type.kind == cursor_child.type.kind.CONSTANTARRAY:
                     struct_return = convert(cursor_child.type.element_type)
+                    cursor_child_child = list(cursor_child.get_children())[-1]
+                    struct_args = replace_expression(cursor_child_child, use_definition=True)
                 else:
                     struct_return = convert(cursor_child.type)
 
-                for cursor_child_child in cursor_child.get_children():
-                    if cursor_child_child.kind == cursor_child_child.kind.DECL_REF_EXPR:
-                        struct_args = replace_expression(cursor_child_child, use_definition=True)
+                #for cursor_child_child in cursor_child.get_children():
+                #    if cursor_child_child.kind == cursor_child_child.kind.DECL_REF_EXPR:
+                #        struct_args = replace_expression(cursor_child_child, use_definition=True)
 
                 if struct_args != "":
                     struct_content[position].append(
@@ -197,7 +200,7 @@ def parse_structs(cursor):
                 else:
                     struct_content[position].append("{} {};".format(struct_return, cursor_child.spelling))
 
-                r = r + 1
+                r = True
 
 
 # ----- parse enums ---------------------------------------------------------------
@@ -272,7 +275,7 @@ def generate_typedefs():
         if typedef_return[i] != []:
             if typedef_return[i] != []:
                 if typedef_return[i] in struct_table or typedef_return[i] in interface_name \
-                        or typedef_return[i] in enum_name or typedef_return[i] in typedef_name:
+                        or typedef_return[i] in enum_name:
                     string += "typedef struct {} {};\n".format(typedef_return[i], typedef_name[i])
                 else:
                     string += "typedef {} {};\n".format(typedef_return[i], typedef_name[i])
@@ -287,7 +290,7 @@ def generate_interface_typedefs():
     for i in range(len(interface_typedef_name)):
         if typedef_return[i] != []:
             if interface_typedef_return[i] in struct_table or interface_typedef_return[i] in interface_name\
-                    or interface_typedef_return[i] in enum_name or interface_typedef_return[i] in typedef_name:
+                    or interface_typedef_return[i] in enum_name:
                 string += "typedef struct {} {};\n".format(interface_typedef_return[i], interface_typedef_name[i])
             else:
                 string += "typedef {} {};\n".format(interface_typedef_return[i], interface_typedef_name[i])
@@ -333,13 +336,9 @@ def generate_enums():
                 string += "{} = {}".format(enum_table[i][2 * j], enum_table[i][2 * j + 1])
             else:
                 string += "{}".format(enum_table[i][2 * j])
-
             if j < enum_count - 1:
                 string += ","
             string += "\n"
-
-
-
         string += "};\n"
         string += "\n"
     string += "\n"
@@ -448,8 +447,8 @@ def generate_conversion():
     string = generate_standard()
     string += generate_forward()
     string += generate_interface_typedefs()
-    string += generate_variables()
     string += generate_enums()
+    string += generate_variables()
     string += generate_structs()
     string += generate_interface()
     return string
@@ -557,11 +556,17 @@ def get_values_in_extent(cursor: Cursor) -> List[str]:
     return [token.spelling for token in cursor.get_tokens()]
 
 
-def get_cursor_tokens(cursor: Cursor, use_definition: bool = False) -> List[Token]:
+
+
+def get_cursor_tokens(cursor: Cursor, use_definition: bool) -> List[Token]:
     result = []
     equal_sign_found = False
     if use_definition:
-        cursor = cursor.get_definition()
+        cursor_definition = cursor.get_definition()
+        if cursor_definition:
+            cursor = cursor_definition
+        else:
+            equal_sign_found = True
     for token in cursor.get_tokens():
         if token.spelling == '=':
             equal_sign_found = True
