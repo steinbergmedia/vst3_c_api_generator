@@ -3,7 +3,7 @@ from optparse import OptionParser
 from pathlib import Path
 from typing import List
 
-from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token, Type, CursorKind
+from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token, Type
 
 from clang_helpers import set_library_path
 
@@ -207,13 +207,6 @@ def parse_structs(cursor):
                     struct_content[position].append("{} {};".format(struct_return, cursor_child.spelling))
 
                 r = True
-
-def create_struct_prefix(cursor_type: Type) -> str:
-    while cursor_type.kind == cursor_type.kind.POINTER or cursor_type.kind == cursor_type.kind.LVALUEREFERENCE:
-        cursor_type = cursor_type.get_pointee()
-    if cursor_type.get_declaration().kind == CursorKind.STRUCT_DECL or cursor_type.get_declaration().kind == CursorKind.CLASS_DECL:
-        return "struct "
-    return ""
 
 
 # ----- parse enums ---------------------------------------------------------------
@@ -494,6 +487,18 @@ def print_info():
 
 
 # ----- utility functions ----------------------------------------------------------------------------------------------
+
+
+# noinspection SpellCheckingInspection
+def create_struct_prefix(cursor_type: Type) -> str:
+    pointee = cursor_type.get_pointee()
+    while pointee.kind != cursor_type.kind.INVALID:
+        cursor_type = pointee
+        pointee = cursor_type.get_pointee()
+    declaration = cursor_type.get_declaration()
+    if declaration.kind == declaration.kind.STRUCT_DECL or declaration.kind == declaration.kind.CLASS_DECL:
+        return 'struct '
+    return ''
 
 
 def normalise_link(source: str) -> str:
