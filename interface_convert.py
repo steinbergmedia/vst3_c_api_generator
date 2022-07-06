@@ -3,7 +3,7 @@ from optparse import OptionParser
 from pathlib import Path
 from typing import List
 
-from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token
+from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token, Type
 
 from clang_helpers import set_library_path
 
@@ -598,15 +598,11 @@ def convert_method_args_name(source: str) -> str:
 
 # ----- conversion function --------------------------------------------------------------------------------------------
 
-def convert_cursor(cursor) -> str:
-    namespace_prefix = create_namespace_prefix(cursor)
-    string = cursor.spelling
-    string = namespace_prefix + string
-    return string
+def convert_cursor(cursor: Cursor) -> str:
+    return create_namespace_prefix(cursor) + cursor.spelling
 
 
-
-def convert_type(type) -> str:
+def convert_type(cursor_type: Type) -> str:
     found_const = False
     found_const_end = False
     found_unsigned = False
@@ -614,8 +610,7 @@ def convert_type(type) -> str:
     found_ptr = False
     found_lvr = False
     found_ptr_lvr = False
-    namespace_prefix = ''
-    string = convert_namespace(type.spelling)
+    string = convert_namespace(cursor_type.spelling)
     #print(string)
     if "const " in string:
         string = string.replace("const ", "")
