@@ -19,29 +19,41 @@ def parse_header(cursor):
         parse_namespace(cursor_child)
         parsing(cursor_child)
 
-def parse_namespace(cursor):
-        if cursor.kind == cursor.kind.NAMESPACE:
-            for cursor_child in cursor.get_children():
-                parse_namespace(cursor_child)
-                parsing(cursor_child)
 
-def parsing(cursor):
+def parse_namespace(cursor: Cursor, namespace: str = ''):
+    if cursor.kind != cursor.kind.NAMESPACE:
+        return
+    if namespace:
+        namespace += '::'
+    namespace += cursor.spelling
+    for cursor_child in cursor.get_children():
+        parse_namespace(cursor_child, namespace)
+        parsing(cursor_child, namespace)
+
+
+def parsing(cursor: Cursor, namespace: str = ''):
     parse_interfaces(cursor)
     parse_enum(cursor)
     parse_structs(cursor)
-    parse_IID(cursor)
+    parse_iid(cursor, namespace)
     store_typedefs(cursor)
     parse_variables(cursor)
 
-def parse_IID(cursor):
+
+def parse_iid(cursor: Cursor, namespace: str):
     if cursor.kind == cursor.kind.VAR_DECL and cursor.spelling.endswith("_iid"):
-        ID_tokens = get_tokens_from_extent(cursor)
-        ID_table[ID_tokens[2]] = [ID_tokens[4], ID_tokens[6], ID_tokens[8], ID_tokens[10]]
+        id_tokens = get_tokens_from_extent(cursor)
+        interface = convert_namespace(namespace)
+        if interface:
+            interface += '_'
+        interface += id_tokens[2]
+        id_table[interface] = [id_tokens[4], id_tokens[6], id_tokens[8], id_tokens[10]]
+
 
 def get_tokens_from_extent(cursor):
-    tu = cursor.translation_unit
-    extent = tu.get_extent(cursor.location.file.name, [cursor.extent.start.offset, cursor.extent.end.offset])
-    return [token.spelling for token in TokenGroup.get_tokens(tu, extent)]
+    cursor_tu = cursor.translation_unit
+    extent = cursor_tu.get_extent(cursor.location.file.name, [cursor.extent.start.offset, cursor.extent.end.offset])
+    return [token.spelling for token in TokenGroup.get_tokens(cursor_tu, extent)]
 
 
 # ----- parse typedefs ---------------------------------------------------------------
@@ -394,14 +406,13 @@ def generate_interface():
         string += "    struct {}Vtbl* lpVtbl;\n".format(interface_name[i])
         string += "{} {};\n".format("}", interface_name[i])
         string += "\n"
-        interface_name_clean = interface_name[i][interface_name[i].rindex("_") + 1:]
-        if interface_name_clean in ID_table:
-            interface_ids = ID_table[interface_name_clean]
+        interface_ids = id_table.get(interface_name[i], None)
+        if interface_ids:
             string += "Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
-                                                                                     interface_ids[0],
-                                                                                     interface_ids[1],
-                                                                                     interface_ids[2],
-                                                                                     interface_ids[3])
+                                                                                           interface_ids[0],
+                                                                                           interface_ids[1],
+                                                                                           interface_ids[2],
+                                                                                           interface_ids[3])
         string += "\n"
     string += "\n"
     return string
@@ -690,7 +701,7 @@ if __name__ == '__main__':
     variable_value = []
 
 
-    ID_table = {}
+    id_table = {}
 
 
 # ----- Conversion helper arrays -----
