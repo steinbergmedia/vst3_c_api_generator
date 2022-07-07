@@ -17,7 +17,7 @@ endif()
 find_package (Python3)
 
 project(GeneratorTest)
-add_executable(GeneratorTest main.c)
+add_executable(GeneratorTest main.c test2.c)
 target_include_directories(GeneratorTest PRIVATE ${CMAKE_BINARY_DIR})
 
 set(venv_dir ${CMAKE_CURRENT_SOURCE_DIR}/build/venv)
