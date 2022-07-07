@@ -85,6 +85,7 @@ def parse_typedefs(cursor):
 
 # ----- parse interfaces ---------------------------------------------------------------
 
+
 def parse_interfaces(cursor):
     if cursor.kind == cursor.kind.CLASS_DECL and cursor.spelling not in blacklist:
         children = list(cursor.get_children())
@@ -113,7 +114,7 @@ def parse_interfaces(cursor):
             parse_enum(cursor_child)
             parse_inheritance(cursor_child)
             parse_variables(cursor_child)
-            method_count_local = parse_methods(cursor_child, method_count_local, interface_name[-1])
+            method_count_local = parse_methods(cursor_child, method_count_local)
 
 
 # ----- parse inheritances ---------------------------------------------------------------
@@ -131,7 +132,7 @@ def parse_inheritance(cursor):
 
 # ----- parse methods ---------------------------------------------------------------
 
-def parse_methods(cursor, method_count_local, current_interface):
+def parse_methods(cursor, method_count_local):
     if cursor.kind == cursor.kind.CXX_METHOD:
         method_count_local = method_count_local + 1
         position = len(interface_name) - 1
@@ -142,11 +143,12 @@ def parse_methods(cursor, method_count_local, current_interface):
         method_name[position].append(cursor.spelling)
 
         method_return[position].append(create_struct_prefix(cursor.result_type) + convert_type(cursor.result_type))
-        method_args_content = parse_method_arguments(cursor, current_interface)
+        method_args_content = parse_method_arguments(cursor)
         method_args[position][method_count_local - 1].append("".join(method_args_content))
     return method_count_local
 
-def parse_method_arguments(cursor, current_interface):
+
+def parse_method_arguments(cursor):
     p = 0
     method_args_content = []
     for cursor_child in cursor.get_arguments():
@@ -207,11 +209,6 @@ def parse_structs(cursor):
                     struct_return = convert_type(cursor_child_type)
                 struct_return = create_struct_prefix(cursor_child_type) + struct_return
 
-
-                #for cursor_child_child in cursor_child.get_children():
-                #    if cursor_child_child.kind == cursor_child_child.kind.DECL_REF_EXPR:
-                #        struct_args = replace_expression(cursor_child_child, use_definition=True)
-
                 if struct_args != "":
                     struct_content[position].append(
                         "{} {}[{}];".format(struct_return, cursor_child.spelling, struct_args))
@@ -243,6 +240,7 @@ def parse_enum(cursor: Cursor):
 
 # ----- output to string ---------------------------------------------------------------
 
+# noinspection SpellCheckingInspection
 def generate_standard():
     string = "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "Source file: {}\n".format(source_file)
@@ -287,17 +285,18 @@ def generate_standard():
     string += "\n"
     return string
 
+
 def generate_typedefs():
     string = ""
     for i in range(len(typedef_name)):
-        if typedef_return[i] != []:
-            if typedef_return[i] != []:
-                if typedef_return[i] in struct_table or typedef_return[i] in interface_name \
-                        or typedef_return[i] in enum_name:
-                    string += "typedef struct {} {};\n".format(typedef_return[i], typedef_name[i])
-                else:
-                    string += "typedef {} {};\n".format(typedef_return[i], typedef_name[i])
+        if typedef_return[i]:
+            if typedef_return[i] in struct_table or typedef_return[i] in interface_name \
+                    or typedef_return[i] in enum_name:
+                string += "typedef struct {} {};\n".format(typedef_return[i], typedef_name[i])
+            else:
+                string += "typedef {} {};\n".format(typedef_return[i], typedef_name[i])
     return string
+
 
 def generate_interface_typedefs():
     string = ""
@@ -306,7 +305,7 @@ def generate_interface_typedefs():
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
     for i in range(len(interface_typedef_name)):
-        if typedef_return[i] != []:
+        if typedef_return[i]:
             if interface_typedef_return[i] in struct_table or interface_typedef_return[i] in interface_name\
                     or interface_typedef_return[i] in enum_name:
                 string += "typedef struct {} {};\n".format(interface_typedef_return[i], interface_typedef_name[i])
@@ -315,6 +314,7 @@ def generate_interface_typedefs():
     string += "\n"
     string += "\n"
     return string
+
 
 def generate_forward():
     string = ""
@@ -333,6 +333,7 @@ def generate_forward():
         string += "struct {};\n".format(struct_table[i])
     string += "\n"
     return string
+
 
 def generate_enums():
     string = ""
@@ -368,6 +369,7 @@ def get_converted_namespaces(source):
         source = source.replace("const ", "")
     return source.split("_")[:-1]
 
+
 def generate_structs():
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
@@ -386,6 +388,8 @@ def generate_structs():
     string += "\n"
     return string
 
+
+# noinspection SpellCheckingInspection
 def generate_interface():
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
@@ -409,14 +413,16 @@ def generate_interface():
         interface_ids = id_table.get(interface_name[i], None)
         if interface_ids:
             string += "static Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
-                                                                                           interface_ids[0],
-                                                                                           interface_ids[1],
-                                                                                           interface_ids[2],
-                                                                                           interface_ids[3])
+                                                                                                  interface_ids[0],
+                                                                                                  interface_ids[1],
+                                                                                                  interface_ids[2],
+                                                                                                  interface_ids[3])
         string += "\n"
     string += "\n"
     return string
 
+
+# noinspection SpellCheckingInspection
 def generate_methods(i):
     string = ""
     methods_location = 0
@@ -440,7 +446,7 @@ def generate_methods(i):
     for j in range(len(method_name[i])):
         if method_args[i][j][0] == "":
             string += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\n".format(method_return[i][j],
-                                                                                              method_name[i][j])
+                                                                                            method_name[i][j])
         elif method_args[i][j][0] != "":
             string += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});\n".format(method_return[i][j],
                                                                                                 method_name[i][j],
@@ -449,6 +455,7 @@ def generate_methods(i):
     string += "\n"
     return string
 
+
 def generate_variables():
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
@@ -456,10 +463,11 @@ def generate_variables():
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
     for i in range(len(variable_name)):
-        string +=("static {} {} = {};\n".format(variable_return[i], variable_name[i], variable_value[i]))
+        string += ("static {} {} = {};\n".format(variable_return[i], variable_name[i], variable_value[i]))
     string += "\n"
     string += "\n"
     return string
+
 
 def generate_conversion():
     string = generate_standard()
@@ -660,7 +668,7 @@ if __name__ == '__main__':
     parser = OptionParser("usage: {filename} [clang-args*]")
     (opts, filename) = parser.parse_args()
     if not filename:
-        print ('No filename was specified!')
+        print('No filename was specified!')
         exit(1)
     set_library_path()
     index = Index.create()
@@ -699,7 +707,6 @@ if __name__ == '__main__':
     variable_return = []
     variable_name = []
     variable_value = []
-
 
     id_table = {}
 
