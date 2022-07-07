@@ -619,59 +619,23 @@ def convert_cursor(cursor: Cursor) -> str:
     return create_namespace_prefix(cursor) + cursor.spelling
 
 
+# noinspection SpellCheckingInspection
 def convert_type(cursor_type: Type) -> str:
-    found_const = False
-    found_const_end = False
-    found_unsigned = False
-    found_doubleptr = False
-    found_ptr = False
-    found_lvr = False
-    found_ptr_lvr = False
-    string = convert_namespace(cursor_type.spelling)
-    #print(string)
-    if "const " in string:
-        string = string.replace("const ", "")
-        found_const = True
-    if string.endswith("const"):
-        string = string.replace("const", "")
-        found_const_end = True
-    if "unsigned" in string:
-        string = string.replace("unsigned ", "")
-        found_unsigned = True
-    if "*&" in string:
-        string = string.replace(" *&", "")
-        found_ptr_lvr = True
-    elif "**" in string:
-        string = string.replace(" **", "")
-        found_doubleptr = True
-    elif "*" in string:
-        string = string.replace(" *", "")
-        found_ptr = True
-    elif "&" in string:
-        string = string.replace(" &", "")
-        found_lvr = True
-    #print("  ", string)
-
-    if string in remove_table:
-        string = ''
-
-    if found_unsigned:
-        string = "unsigned {}".format(string)
-    if found_const:
-        string = "const {}".format(string)
-    if found_doubleptr:
-        string = "{}**".format(string)
-    if found_ptr:
-        string = "{}*".format(string)
-    if found_lvr:
-        string = "{}*".format(string)
-    if found_ptr_lvr:
-        string = "{}**".format(string)
-    if found_const_end:
-        string = "{} const".format(string)
-    #print("     ", string)
-    #print()
-    return string
+    num_pointers = 0
+    num_consts = 0
+    pointee = cursor_type.get_pointee()
+    while pointee.kind != pointee.kind.INVALID:
+        if cursor_type.is_const_qualified():
+            num_consts += 1
+        if cursor_type.kind == cursor_type.kind.RVALUEREFERENCE:
+            num_pointers += 1
+        cursor_type = pointee
+        num_pointers += 1
+        pointee = cursor_type.get_pointee()
+    result = convert_namespace(cursor_type.spelling)
+    if num_pointers:
+        result = convert_namespace(cursor_type.spelling) + '*' * num_pointers + ' const' * num_consts
+    return result
 
 
 if __name__ == '__main__':
@@ -730,7 +694,6 @@ if __name__ == '__main__':
 
 # ----- Conversion helper arrays -----
     blacklist = ["FUID", "FReleaser"]
-    remove_table = ["/*out*/", "/*in*/"]
 
 # ----- Parse -----
     parse_header(tu.cursor)
