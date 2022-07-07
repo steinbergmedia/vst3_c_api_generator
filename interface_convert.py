@@ -41,19 +41,14 @@ def parsing(cursor: Cursor, namespace: str = ''):
 
 
 def parse_iid(cursor: Cursor, namespace: str):
-    if cursor.kind == cursor.kind.VAR_DECL and cursor.spelling.endswith("_iid"):
-        id_tokens = get_tokens_from_extent(cursor)
-        interface = convert_namespace(namespace)
-        if interface:
-            interface += '_'
-        interface += id_tokens[2]
-        id_table[interface] = [id_tokens[4], id_tokens[6], id_tokens[8], id_tokens[10]]
-
-
-def get_tokens_from_extent(cursor):
-    cursor_tu = cursor.translation_unit
-    extent = cursor_tu.get_extent(cursor.location.file.name, [cursor.extent.start.offset, cursor.extent.end.offset])
-    return [token.spelling for token in TokenGroup.get_tokens(cursor_tu, extent)]
+    if cursor.kind != cursor.kind.VAR_DECL and cursor.spelling.endswith('_iid'):
+        return
+    id_tokens = get_token_spellings_from_extent(cursor)
+    interface = convert_namespace(namespace)
+    if interface:
+        interface += '_'
+    interface += id_tokens[2]
+    id_table[interface] = [id_tokens[4], id_tokens[6], id_tokens[8], id_tokens[10]]
 
 
 # ----- parse typedefs ---------------------------------------------------------------
@@ -77,7 +72,7 @@ def parse_typedefs(cursor):
         return None, None
     if cursor.underlying_typedef_type.kind == cursor.type.kind.CONSTANTARRAY:
         return_type = convert_type(cursor.underlying_typedef_type.element_type)
-        name = "{}[{}]".format(convert_type(cursor.type), cursor.underlying_typedef_type.element_count)
+        name = '{}[{}]'.format(convert_type(cursor.type), cursor.underlying_typedef_type.element_count)
     else:
         return_type = convert_type(cursor.underlying_typedef_type)
         name = convert_cursor(cursor)
@@ -87,34 +82,35 @@ def parse_typedefs(cursor):
 
 
 def parse_interfaces(cursor):
-    if cursor.kind == cursor.kind.CLASS_DECL and cursor.spelling not in blacklist:
-        children = list(cursor.get_children())
-        if not children:
-            return
-        interface_source.append(convert_cursor_location(cursor.location))
-        interface_description.append(cursor.brief_comment)
-        interface_name.append(convert_cursor(cursor))
-        position = len(interface_name) - 1
+    if cursor.kind != cursor.kind.CLASS_DECL or cursor.spelling in blacklist:
+        return
+    children = list(cursor.get_children())
+    if not children:
+        return
+    interface_source.append(convert_cursor_location(cursor.location))
+    interface_description.append(cursor.brief_comment)
+    interface_name.append(convert_cursor(cursor))
+    position = len(interface_name) - 1
 
-        inherits_table.append("")
-        inherits_table[position] = []
+    inherits_table.append("")
+    inherits_table[position] = []
 
-        method_name.append("")
-        method_name[position] = []
+    method_name.append("")
+    method_name[position] = []
 
-        method_return.append("")
-        method_return[position] = []
+    method_return.append("")
+    method_return[position] = []
 
-        method_args.append("")
-        method_args[position] = []
+    method_args.append("")
+    method_args[position] = []
 
-        method_count_local = 0
-        for cursor_child in children:
-            store_interface_typedefs(cursor_child)
-            parse_enum(cursor_child)
-            parse_inheritance(cursor_child)
-            parse_variables(cursor_child)
-            method_count_local = parse_methods(cursor_child, method_count_local)
+    method_count_local = 0
+    for cursor_child in children:
+        store_interface_typedefs(cursor_child)
+        parse_enum(cursor_child)
+        parse_inheritance(cursor_child)
+        parse_variables(cursor_child)
+        method_count_local = parse_methods(cursor_child, method_count_local)
 
 
 # ----- parse inheritances ---------------------------------------------------------------
@@ -507,6 +503,12 @@ def print_info():
 
 
 # ----- utility functions ----------------------------------------------------------------------------------------------
+
+
+def get_token_spellings_from_extent(cursor):
+    cursor_tu = cursor.translation_unit
+    extent = cursor_tu.get_extent(cursor.location.file.name, [cursor.extent.start.offset, cursor.extent.end.offset])
+    return [token.spelling for token in TokenGroup.get_tokens(cursor_tu, extent)]
 
 
 # noinspection SpellCheckingInspection
