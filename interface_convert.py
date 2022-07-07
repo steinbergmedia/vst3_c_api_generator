@@ -408,7 +408,7 @@ def generate_interface():
         string += "\n"
         interface_ids = id_table.get(interface_name[i], None)
         if interface_ids:
-            string += "Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
+            string += "static Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[i],
                                                                                            interface_ids[0],
                                                                                            interface_ids[1],
                                                                                            interface_ids[2],
@@ -456,7 +456,7 @@ def generate_variables():
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
     for i in range(len(variable_name)):
-        string +=("{} {} = {};\n".format(variable_return[i], variable_name[i], variable_value[i]))
+        string +=("static {} {} = {};\n".format(variable_return[i], variable_name[i], variable_value[i]))
     string += "\n"
     string += "\n"
     return string
