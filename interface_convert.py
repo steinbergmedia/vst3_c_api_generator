@@ -41,7 +41,7 @@ def parsing(cursor: Cursor, namespace: str = ''):
 
 
 def parse_iid(cursor: Cursor, namespace: str):
-    if cursor.kind != cursor.kind.VAR_DECL and cursor.spelling.endswith('_iid'):
+    if cursor.kind != cursor.kind.VAR_DECL or not cursor.spelling.endswith('_iid'):
         return
     id_tokens = get_token_spellings_from_extent(cursor)
     interface = convert_namespace(namespace)
