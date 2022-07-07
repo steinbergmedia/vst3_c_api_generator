@@ -543,10 +543,10 @@ def tokens_to_string(tokens: List[Token]) -> str:
             result = result.strip()
             result += f' {token.spelling} '
         else:
-            if cursor.kind == cursor.kind.TYPE_REF and (i >= len(tokens) - 1 or tokens[i + 1].spelling != ")"):
-                result += "(" + namespace_prefix + token.spelling + ")"
-            else:
-                result += namespace_prefix + token.spelling
+            token_with_namespace = namespace_prefix + token.spelling
+            if cursor.kind == cursor.kind.TYPE_REF and (i + 1 >= len(tokens) or tokens[i + 1].spelling != ')'):
+                token_with_namespace = f'({token_with_namespace})'
+            result += token_with_namespace
         previous_kind = cursor.kind
     result = result.strip()
     return result
