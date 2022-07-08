@@ -3,14 +3,14 @@ from optparse import OptionParser
 from pathlib import Path
 from typing import List
 
-from clang.cindex import Index, TokenGroup, SourceLocation, Cursor, Token, Type
+from clang.cindex import TokenGroup, SourceLocation, Cursor, Token, Type
 
-from clang_helpers import set_library_path
+from clang_helpers import create_translation_unit
 
 
 # ----- parse ----------------------------------------------------------------------------------------------------------
 
-def parse_header(cursor):
+def parse_header(cursor, include_path):
     for cursor_child in cursor.get_children():
         cursor_child_location = normalise_link(cursor_child.location.file.name)
         if not cursor_child_location.startswith(include_path) or cursor_child_location in includes_table:
@@ -237,7 +237,7 @@ def parse_enum(cursor: Cursor):
 # ----- output to string ---------------------------------------------------------------
 
 # noinspection SpellCheckingInspection
-def generate_standard():
+def generate_standard(source_file: str):
     string = "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "Source file: {}\n".format(source_file)
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
@@ -465,8 +465,8 @@ def generate_variables():
     return string
 
 
-def generate_conversion():
-    string = generate_standard()
+def generate_conversion(source_file: str):
+    string = generate_standard(source_file)
     string += generate_forward()
     string += generate_interface_typedefs()
     string += generate_enums()
@@ -660,6 +660,45 @@ def convert_type(cursor_type: Type) -> str:
     return result
 
 
+# ----- Arrays -----
+interface_source = []
+interface_description = []
+interface_name = []
+inherits_table = []
+
+includes_list = []
+includes_table = []
+
+method_name = []
+method_return = []
+method_args = []
+
+struct_table = []
+struct_content = []
+struct_source = []
+
+enum_name = []
+enum_table = []
+enum_source = []
+
+typedef_name = []
+typedef_return = []
+typedef_interface_name = []
+typedef_interface_return = []
+interface_typedef_return = []
+interface_typedef_name = []
+
+variable_return = []
+variable_name = []
+variable_value = []
+
+id_table = {}
+
+
+# ----- Conversion helper arrays -----
+blacklist = ["FUID", "FReleaser"]
+
+
 if __name__ == '__main__':
 
     print_header = True
@@ -672,53 +711,12 @@ if __name__ == '__main__':
     if not filename:
         print('No filename was specified!')
         exit(1)
-    set_library_path()
-    index = Index.create()
     include_path = normalise_link(str(Path(sys.argv[1]).parents[2]))
-    tu = index.parse(normalise_link(filename[0]), ['-I', include_path, '-x', 'c++-header'])
-    source_file = normalise_link(tu.spelling)
-
-# ----- Arrays -----
-    interface_source = []
-    interface_description = []
-    interface_name = []
-    inherits_table = []
-
-    includes_list = []
-    includes_table = []
-
-    method_name = []
-    method_return = []
-    method_args = []
-
-    struct_table = []
-    struct_content = []
-    struct_source = []
-
-    enum_name = []
-    enum_table = []
-    enum_source = []
-
-    typedef_name = []
-    typedef_return = []
-    typedef_interface_name = []
-    typedef_interface_return = []
-    interface_typedef_return = []
-    interface_typedef_name = []
-
-    variable_return = []
-    variable_name = []
-    variable_value = []
-
-    id_table = {}
-
-
-# ----- Conversion helper arrays -----
-    blacklist = ["FUID", "FReleaser"]
+    tu = create_translation_unit(Path(filename[0]), include_path)
 
 # ----- Parse -----
-    parse_header(tu.cursor)
-    header_content = generate_conversion()
+    parse_header(tu.cursor, include_path)
+    header_content = generate_conversion(normalise_link(tu.spelling))
 
 # ----- Write -----
     if write_header:
