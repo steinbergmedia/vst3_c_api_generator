@@ -1,0 +1,18 @@
+namespace Steinberg {
+
+typedef char int8;
+typedef char char8;
+typedef long int32;
+typedef unsigned long uint32;
+typedef int32 UCoord;
+typedef int32 tresult;
+typedef int8 TUID[16];
+typedef const char8* FIDString
+
+class FUID;
+struct PClassInfo2;
+struct PClassInfoW;
+
+#define PLUGIN_API
+
+}

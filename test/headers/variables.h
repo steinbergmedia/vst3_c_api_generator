@@ -26,10 +26,6 @@ const SpeakerArrangement k71Proximity = kSpeakerL | kSpeakerR | kSpeakerC | kSpe
 
 }
 
-typedef long int32;
-typedef unsigned long uint32;
-typedef int32 UCoord;
-
 static const int32 kMinLong = (-0x42 - 1);
 static const int32 kMinInt32 = kMinLong;
 

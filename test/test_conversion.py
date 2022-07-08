@@ -27,8 +27,11 @@ class TestConversion(unittest.TestCase):
 
     @staticmethod
     def _get_section(start_comment: str, end_comment: str, header_content: str) -> str:
-        match = re.search(r'{}.*?\*/\s*(.*?)\s*/\*-+.{}'.format(start_comment, end_comment), header_content,
-                          flags=re.DOTALL)
+        if end_comment:
+            match = re.search(r'{}.*?\*/\s*(.*?)\s*/\*-+.{}'.format(start_comment, end_comment), header_content,
+                              flags=re.DOTALL)
+        else:
+            match = re.search(r'{}.*?\*/\s*(.*?)$'.format(start_comment), header_content, flags=re.DOTALL)
         if match:
             return re.sub(r'.?/\*.*?\*/.', '', match.group(1), flags=re.DOTALL).strip()
         return ''
@@ -41,4 +44,14 @@ class TestConversion(unittest.TestCase):
     def test_enums(self):
         header_name = 'enums'
         content_section = self._get_section('Enums', 'Variable declarations', self._convert_header(header_name))
+        self.assertEqual(self._load_expectation(header_name), content_section)
+
+    def test_struct(self):
+        header_name = 'structs'
+        content_section = self._get_section('Structs', 'Interfaces', self._convert_header(header_name))
+        self.assertEqual(self._load_expectation(header_name), content_section)
+
+    def test_interfaces(self):
+        header_name = 'interfaces'
+        content_section = self._get_section('Interfaces', '', self._convert_header(header_name))
         self.assertEqual(self._load_expectation(header_name), content_section)

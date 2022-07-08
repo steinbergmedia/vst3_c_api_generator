@@ -1,3 +1,7 @@
+#pragma once
+
+#include "types.h"
+
 namespace Steinberg {
 namespace Vst {
 
