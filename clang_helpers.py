@@ -4,6 +4,8 @@ import clang
 
 
 def set_library_path():
+    if clang.cindex.Config.library_path:
+        return
     libclang_path = Path(clang.__file__).parent / 'native'
     clang.cindex.Config.set_library_path(str(libclang_path))
 
