@@ -527,7 +527,9 @@ def normalise_link(source: str) -> str:
     return source.replace('\\', '/')
 
 def normalise_source(string):
-    return string[string.rindex("pluginterfaces"):]
+    if 'pluginterfaces' in string:
+        return string[string.rindex("pluginterfaces"):]
+    return string
 
 def convert_cursor_location(cursor_location: SourceLocation) -> str:
     return 'Source: "{}", line {}'.format(normalise_link(cursor_location.file.name), cursor_location.line)
