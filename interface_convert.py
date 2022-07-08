@@ -697,6 +697,67 @@ variable_value = []
 id_table = {}
 
 
+def clear_arrays():
+    global interface_source
+    global interface_description
+    global interface_name
+    global inherits_table
+    global includes_list
+    global includes_table
+    global method_name
+    global method_return
+    global method_args
+    global struct_table
+    global struct_content
+    global struct_source
+    global enum_name
+    global enum_table
+    global enum_source
+    global typedef_name
+    global typedef_return
+    global typedef_interface_name
+    global typedef_interface_return
+    global interface_typedef_return
+    global interface_typedef_name
+    global variable_return
+    global variable_name
+    global variable_value
+    global id_table
+
+    interface_source = []
+    interface_description = []
+    interface_name = []
+    inherits_table = []
+
+    includes_list = []
+    includes_table = []
+
+    method_name = []
+    method_return = []
+    method_args = []
+
+    struct_table = []
+    struct_content = []
+    struct_source = []
+
+    enum_name = []
+    enum_table = []
+    enum_source = []
+
+    typedef_name = []
+    typedef_return = []
+    typedef_interface_name = []
+    typedef_interface_return = []
+    interface_typedef_return = []
+    interface_typedef_name = []
+
+    variable_return = []
+    variable_name = []
+    variable_value = []
+
+    id_table = {}
+
+
 # ----- Conversion helper arrays -----
 blacklist = ["FUID", "FReleaser"]
 
