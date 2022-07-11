@@ -23,6 +23,8 @@ const Speaker kSpeakerRs = 1 << 5;
 const Speaker kSpeakerPl = (Speaker)1 << 31;
 const Speaker kSpeakerPr = (Speaker)1 << 32;
 const SpeakerArrangement k71Proximity = kSpeakerL | kSpeakerR | kSpeakerC | kSpeakerLfe | kSpeakerLs | kSpeakerRs | kSpeakerPl | kSpeakerPr;
+const CString kStringEmpty		= "";
+const CString kStringStereoR	= "Stereo (Ls Rs)";
 
 }
 
