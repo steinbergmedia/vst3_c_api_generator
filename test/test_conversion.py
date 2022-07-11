@@ -33,7 +33,7 @@ class TestConversion(unittest.TestCase):
         else:
             match = re.search(r'{}.*?\*/\s*(.*?)$'.format(start_comment), header_content, flags=re.DOTALL)
         if match:
-            return re.sub(r'.?/\*.*?\*/.', '', match.group(1), flags=re.DOTALL).strip()
+            return re.sub(r'.?/\*-----.*?\*/.', '', match.group(1), flags=re.DOTALL).strip()
         return ''
 
     def test_variables(self):
