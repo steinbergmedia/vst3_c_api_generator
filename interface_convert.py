@@ -43,7 +43,7 @@ def parsing(cursor: Cursor, namespace: str = ''):
 def parse_iid(cursor: Cursor, namespace: str):
     if cursor.kind != cursor.kind.VAR_DECL or not cursor.spelling.endswith('_iid'):
         return
-    id_tokens = get_token_spellings_from_extent(cursor)
+    id_tokens = _get_token_spellings_from_extent(cursor)
     interface = convert_namespace(namespace)
     if interface:
         interface += '_'
@@ -152,7 +152,7 @@ def parse_method_arguments(cursor):
             method_args_content.append(", ")
         method_args_content.append(create_struct_prefix(cursor_child.type) + convert_type(cursor_child.type))
         method_args_content.append(" ")
-        method_args_content.append(convert_method_args_name(cursor_child.spelling))
+        method_args_content.append(_convert_method_args_name(cursor_child.spelling))
         p = p + 1
     return method_args_content
 
@@ -212,7 +212,7 @@ def parse_enum(cursor: Cursor):
     if cursor.kind != cursor.kind.ENUM_DECL:
         return
     if cursor.spelling:
-        enum_name.append(create_namespace_prefix(cursor) + cursor.spelling)
+        enum_name.append(convert_cursor(cursor))
     else:
         enum_name.append('')
     enum_source.append(normalise_source(convert_cursor_location(cursor.location)))
@@ -520,7 +520,7 @@ def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
         if use_definitions:
             return _visit_children(cursor.get_definition(), use_definitions)
         else:
-            return create_namespace_prefix(cursor) + cursor.spelling
+            return convert_cursor(cursor)
     elif cursor.kind == cursor.kind.UNEXPOSED_EXPR or cursor.kind == cursor.kind.ENUM_CONSTANT_DECL:
         if children:
             return _visit_children(children[0], use_definitions)
@@ -537,7 +537,7 @@ def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
         raise TypeError('CursorKind: {} ist not supported!'.format(cursor.kind.name))
 
 
-def get_token_spellings_from_extent(cursor):
+def _get_token_spellings_from_extent(cursor: Cursor) -> List[str]:
     cursor_tu = cursor.translation_unit
     extent = cursor_tu.get_extent(cursor.location.file.name, [cursor.extent.start.offset, cursor.extent.end.offset])
     return [token.spelling for token in TokenGroup.get_tokens(cursor_tu, extent)]
@@ -560,9 +560,9 @@ def normalise_link(source: str) -> str:
 
 
 # noinspection SpellCheckingInspection
-def normalise_source(string):
+def normalise_source(string: str) -> str:
     if 'pluginterfaces' in string:
-        return string[string.rindex("pluginterfaces"):]
+        return string[string.rindex('pluginterfaces'):]
     return string
 
 
@@ -575,13 +575,13 @@ def convert_namespace(source: str) -> str:
 
 
 def create_namespace_prefix(cursor: Cursor) -> str:
-    namespaces = get_namespaces(cursor)
+    namespaces = _get_namespaces(cursor)
     if not namespaces:
         return ''
     return '_'.join(namespaces) + '_'
 
 
-def get_namespaces(cursor: Cursor) -> List[str]:
+def _get_namespaces(cursor: Cursor) -> List[str]:
     cursor_definition = cursor.get_definition()
     if cursor_definition:
         cursor = cursor_definition
@@ -595,7 +595,7 @@ def get_namespaces(cursor: Cursor) -> List[str]:
     return namespaces
 
 
-def convert_method_args_name(source: str) -> str:
+def _convert_method_args_name(source: str) -> str:
     if source == '_iid':
         return 'iid'
     return source
