@@ -164,16 +164,7 @@ def parse_variables(cursor):
     if cursor.kind == cursor.kind.VAR_DECL and cursor.type.kind == cursor.type.kind.TYPEDEF:
         variable_return.append(convert_type(cursor.type))
         variable_name.append(convert_cursor(cursor))
-        last_cursor_child = list(cursor.get_children())[-1]
-        grand_children = list(last_cursor_child.get_children())
-        if len(grand_children) == 1:
-            if grand_children[0].kind == cursor.kind.STRING_LITERAL:
-                # Expand only macros with single string literals
-                variable_value.append(grand_children[0].spelling)
-            else:
-                variable_value.append(replace_expression(grand_children[0], use_definition=True))
-        else:
-            variable_value.append(replace_expression(last_cursor_child, use_definition=True))
+        variable_value.append(_visit_children(list(cursor.get_children())[-1]))
 
 # ----- parse structs ---------------------------------------------------------------
 
@@ -503,6 +494,41 @@ def print_info():
 
 
 # ----- utility functions ----------------------------------------------------------------------------------------------
+
+
+def _get_binary_operator(cursor: Cursor, children: List[Cursor]) -> str:
+    start = children[0].extent.end.offset
+    for token in cursor.get_tokens():
+        if token.extent.start.offset < start:
+            continue
+        return token.spelling
+    return ''
+
+
+def _visit_children(cursor: Cursor) -> str:
+    children = list(cursor.get_children())
+    if cursor.kind == cursor.kind.BINARY_OPERATOR:
+        operator = _get_binary_operator(cursor, children)
+        return '{} {} {}'.format(_visit_children(children[0]), operator, _visit_children(children[1]))
+    elif cursor.kind == cursor.kind.PAREN_EXPR:
+        return '({})'.format(_visit_children(children[0]))
+    elif cursor.kind == cursor.kind.UNARY_OPERATOR:
+        operator = list(cursor.get_tokens())[0].spelling
+        return '{}{}'.format(operator, _visit_children(children[0]))
+    elif cursor.kind == cursor.kind.DECL_REF_EXPR:
+        return _visit_children(cursor.get_definition())
+    elif cursor.kind == cursor.kind.UNEXPOSED_EXPR or cursor.kind == cursor.kind.ENUM_CONSTANT_DECL:
+        return _visit_children(children[0])
+    elif cursor.kind == cursor.kind.VAR_DECL:
+        return _visit_children(children[-1])
+    elif cursor.kind == cursor.kind.CSTYLE_CAST_EXPR or cursor.kind == cursor.kind.CXX_FUNCTIONAL_CAST_EXPR:
+        return '({}) {}'.format(convert_namespace(children[0].spelling), _visit_children(children[1]))
+    elif cursor.kind == cursor.kind.INTEGER_LITERAL or cursor.kind == cursor.kind.STRING_LITERAL:
+        if cursor.spelling:
+            return cursor.spelling
+        return list(cursor.get_tokens())[0].spelling
+    else:
+        raise(TypeError('CursorKind: {} ist not supported!'.format(cursor.kind.name)))
 
 
 def get_token_spellings_from_extent(cursor):
