@@ -190,7 +190,7 @@ def parse_structs(cursor):
                     cursor_child_type = cursor_child.type.element_type
                     struct_return = convert_type(cursor_child_type)
                     cursor_child_child = list(cursor_child.get_children())[-1]
-                    struct_args = replace_expression(cursor_child_child, use_definition=True)
+                    struct_args = _visit_children(cursor_child_child)
                 else:
                     cursor_child_type = cursor_child.type
                     struct_return = convert_type(cursor_child_type)
