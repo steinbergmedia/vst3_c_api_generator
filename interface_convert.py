@@ -552,10 +552,13 @@ def create_struct_prefix(cursor_type: Type) -> str:
 def normalise_link(source: str) -> str:
     return source.replace('\\', '/')
 
+
+# noinspection SpellCheckingInspection
 def normalise_source(string):
     if 'pluginterfaces' in string:
         return string[string.rindex("pluginterfaces"):]
     return string
+
 
 def convert_cursor_location(cursor_location: SourceLocation) -> str:
     return 'Source: "{}", line {}'.format(normalise_link(cursor_location.file.name), cursor_location.line)
@@ -563,13 +566,6 @@ def convert_cursor_location(cursor_location: SourceLocation) -> str:
 
 def convert_namespace(source: str) -> str:
     return source.replace('::', '_')
-
-
-def array_to_string(array: List, insert_spaces: bool) -> str:
-    divider = ''
-    if insert_spaces:
-        divider = ' '
-    return divider.join(array)
 
 
 def tokens_to_string(tokens: List[Token]) -> str:
