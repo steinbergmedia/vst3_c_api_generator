@@ -3,7 +3,7 @@ from optparse import OptionParser
 from pathlib import Path
 from typing import List
 
-from clang.cindex import TokenGroup, SourceLocation, Cursor, Token, Type
+from clang.cindex import TokenGroup, SourceLocation, Cursor, Type
 
 from clang_helpers import create_translation_unit
 
@@ -574,38 +574,6 @@ def convert_namespace(source: str) -> str:
     return source.replace('::', '_')
 
 
-def tokens_to_string(tokens: List[Token]) -> str:
-    result = ''
-    previous_kind = None
-    for i, token in enumerate(tokens):
-        if token.spelling == '::':
-            continue
-        cursor = token.cursor
-        namespace_prefix = ''
-        if cursor.kind == cursor.kind.DECL_REF_EXPR or cursor.kind == cursor.kind.TYPE_REF:
-            namespace_prefix = create_namespace_prefix(cursor)
-        if token.spelling == '(' and previous_kind == cursor.kind.TYPE_REF:
-            # e.g.: uint64 (0xffffffff)
-            result += ' '
-        if token.spelling == ')':
-            # insert space after closing bracket, if not followed by another one
-            if result and result[-1] == ')':
-                result.strip()
-            result += f'{token.spelling} '
-        elif cursor.kind == cursor.kind.BINARY_OPERATOR:
-            # surround binary operators with spaces
-            result = result.strip()
-            result += f' {token.spelling} '
-        else:
-            token_with_namespace = namespace_prefix + token.spelling
-            if cursor.kind == cursor.kind.TYPE_REF and (i + 1 >= len(tokens) or tokens[i + 1].spelling != ')'):
-                token_with_namespace = f'({token_with_namespace})'
-            result += token_with_namespace
-        previous_kind = cursor.kind
-    result = result.strip()
-    return result
-
-
 def create_namespace_prefix(cursor: Cursor) -> str:
     namespaces = get_namespaces(cursor)
     if not namespaces:
@@ -625,40 +593,6 @@ def get_namespaces(cursor: Cursor) -> List[str]:
         cursor = cursor.lexical_parent
     namespaces.reverse()
     return namespaces
-
-
-def get_values_in_extent(cursor: Cursor) -> List[str]:
-    return [token.spelling for token in cursor.get_tokens()]
-
-
-def get_cursor_tokens(cursor: Cursor, use_definition: bool) -> List[Token]:
-    result = []
-    equal_sign_found = False
-    if use_definition:
-        cursor_definition = cursor.get_definition()
-        if cursor_definition:
-            cursor = cursor_definition
-        else:
-            equal_sign_found = True
-    for token in cursor.get_tokens():
-        if token.spelling == '=':
-            equal_sign_found = True
-            continue
-        if not equal_sign_found:
-            continue
-        if not use_definition or token.kind == token.kind.PUNCTUATION or token.kind == token.kind.LITERAL:
-            result.append(token)
-        else:
-            token_cursor = token.cursor
-            if token_cursor.kind == token_cursor.kind.TYPE_REF:
-                result.append(token)
-            else:
-                result += get_cursor_tokens(token_cursor, use_definition)
-    return result
-
-
-def replace_expression(cursor: Cursor, use_definition: bool = False) -> str:
-    return tokens_to_string(get_cursor_tokens(cursor, use_definition))
 
 
 def convert_method_args_name(source: str) -> str:
