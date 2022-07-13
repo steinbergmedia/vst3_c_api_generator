@@ -171,47 +171,36 @@ def parse_variables(cursor):
 
 
 def parse_structs(cursor):
-    if cursor.kind == cursor.kind.STRUCT_DECL and cursor.spelling not in blacklist:
-        r = False
-        position = len(struct_table) - 1
-        for cursor_child in cursor.get_children():
-            parse_enum(cursor_child)
-
-            if cursor_child.kind == cursor_child.kind.FIELD_DECL:
-                struct_args = ""
-
-                if not r:
-                    struct_table.append(convert_cursor(cursor))
-                    position = len(struct_table) - 1
-                    struct_source.append(convert_cursor_location(cursor.location))
-                    struct_content.append("")
-                    struct_content[position] = []
-
-                if cursor_child.type.kind == cursor_child.type.kind.CONSTANTARRAY:
-                    cursor_child_type = cursor_child.type.element_type
-                    struct_return = convert_type(cursor_child_type)
-                    cursor_child_child = list(cursor_child.get_children())[-1]
-                    struct_args = _visit_children(cursor_child_child)
-                else:
-                    cursor_child_type = cursor_child.type
-                    struct_return = convert_type(cursor_child_type)
-                struct_return = create_struct_prefix(cursor_child_type) + struct_return
-
-                if struct_args != "":
-                    struct_content[position].append(
-                        "{} {}[{}];".format(struct_return, cursor_child.spelling, struct_args))
-                else:
-                    struct_content[position].append("{} {};".format(struct_return, cursor_child.spelling))
-
-                r = True
+    if cursor.kind != cursor.kind.STRUCT_DECL or cursor.spelling in blacklist:
+        return
+    children = list(cursor.get_children())
+    if not children:
+        return
+    struct_table.append(convert_cursor(cursor))
+    struct_source.append(convert_cursor_location(cursor.location))
+    fields = []
+    for cursor_child in children:
+        if parse_enum(cursor_child) or cursor_child.kind != cursor_child.kind.FIELD_DECL:
+            continue
+        cursor_child_type = cursor_child.type
+        struct_args = ''
+        if cursor_child.type.kind == cursor_child.type.kind.CONSTANTARRAY:
+            cursor_child_type = cursor_child_type.element_type
+            struct_args = _visit_children(list(cursor_child.get_children())[-1])
+        struct_return = create_struct_prefix(cursor_child_type) + convert_type(cursor_child_type)
+        field = f'{struct_return} {cursor_child.spelling};'
+        if struct_args:
+            field = field[:-1] + f'[{struct_args}];'
+        fields.append(field)
+    struct_content.append(fields)
 
 
 # ----- parse enums ---------------------------------------------------------------
 
 
-def parse_enum(cursor: Cursor):
+def parse_enum(cursor: Cursor) -> bool:
     if cursor.kind != cursor.kind.ENUM_DECL:
-        return
+        return False
     if cursor.spelling:
         enum_name.append(convert_cursor(cursor))
     else:
@@ -224,6 +213,7 @@ def parse_enum(cursor: Cursor):
         enum_definitions.append(create_namespace_prefix(cursor_child) + cursor_child.spelling)
         enum_definitions.append(_visit_children(cursor_child, use_definitions=False))
     enum_table.append(enum_definitions)
+    return True
 
 
 # ----- output to string ---------------------------------------------------------------
