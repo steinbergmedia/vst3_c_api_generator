@@ -55,3 +55,8 @@ class TestConversion(unittest.TestCase):
         header_name = 'interfaces'
         content_section = self._get_section('Interfaces', '', self._convert_header(header_name))
         self.assertEqual(self._load_expectation(header_name), content_section)
+
+    def test_vst_interfaces(self):
+        header_name = 'vst_interfaces'
+        content_section = self._get_section('Interfaces', '', self._convert_header(header_name))
+        self.assertEqual(self._load_expectation(header_name), content_section)
