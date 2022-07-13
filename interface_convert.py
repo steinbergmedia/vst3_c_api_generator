@@ -1,3 +1,4 @@
+import re
 import sys
 from optparse import OptionParser
 from pathlib import Path
@@ -87,7 +88,7 @@ def parse_interfaces(cursor):
     children = list(cursor.get_children())
     if not children:
         return
-    interface_source.append(normalise_source(convert_cursor_location(cursor.location)))
+    interface_source.append(convert_cursor_location(cursor.location))
     interface_description.append(cursor.brief_comment)
     interface_name.append(convert_cursor(cursor))
     position = len(interface_name) - 1
@@ -182,7 +183,7 @@ def parse_structs(cursor):
                 if not r:
                     struct_table.append(convert_cursor(cursor))
                     position = len(struct_table) - 1
-                    struct_source.append(normalise_source(convert_cursor_location(cursor.location)))
+                    struct_source.append(convert_cursor_location(cursor.location))
                     struct_content.append("")
                     struct_content[position] = []
 
@@ -215,7 +216,7 @@ def parse_enum(cursor: Cursor):
         enum_name.append(convert_cursor(cursor))
     else:
         enum_name.append('')
-    enum_source.append(normalise_source(convert_cursor_location(cursor.location)))
+    enum_source.append(convert_cursor_location(cursor.location))
     enum_definitions = []
     for cursor_child in cursor.get_children():
         if cursor_child.kind != cursor_child.kind.ENUM_CONSTANT_DECL:
@@ -230,7 +231,7 @@ def parse_enum(cursor: Cursor):
 # noinspection SpellCheckingInspection
 def generate_standard(source_file: str):
     string = "/*----------------------------------------------------------------------------------------------------------------------\n"
-    string += "Source file: {}\n".format(source_file)
+    string += 'Source: "{}"\n'.format(_remove_build_path(source_file))
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
     string += "#include <stdint.h>\n"
@@ -559,15 +560,12 @@ def normalise_link(source: str) -> str:
     return source.replace('\\', '/')
 
 
-# noinspection SpellCheckingInspection
-def normalise_source(string: str) -> str:
-    if 'pluginterfaces' in string:
-        return string[string.rindex('pluginterfaces'):]
-    return string
+def _remove_build_path(file_name: str) -> str:
+    return re.sub('^.*(pluginterfaces/)', '\\1', normalise_link(file_name))
 
 
 def convert_cursor_location(cursor_location: SourceLocation) -> str:
-    return 'Source: "{}", line {}'.format(normalise_link(cursor_location.file.name), cursor_location.line)
+    return 'Source: "{}", line {}'.format(_remove_build_path(cursor_location.file.name), cursor_location.line)
 
 
 def convert_namespace(source: str) -> str:
