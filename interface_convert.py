@@ -91,81 +91,65 @@ def parse_interfaces(cursor):
     interface_source.append(convert_cursor_location(cursor.location))
     interface_description.append(cursor.brief_comment)
     interface_name.append(convert_cursor(cursor))
-    position = len(interface_name) - 1
 
-    inherits_table.append("")
-    inherits_table[position] = []
+    method_name.append([])
+    method_return.append([])
+    method_args.append([])
 
-    method_name.append("")
-    method_name[position] = []
-
-    method_return.append("")
-    method_return[position] = []
-
-    method_args.append("")
-    method_args[position] = []
-
-    method_count_local = 0
+    inheritors = []
     for cursor_child in children:
         store_interface_typedefs(cursor_child)
         parse_enum(cursor_child)
-        parse_inheritance(cursor_child)
+        parse_inheritance(cursor_child, inheritors)
         parse_variables(cursor_child)
-        method_count_local = parse_methods(cursor_child, method_count_local)
+        parse_methods(cursor_child, len(method_name) - 1)
+
+    inherits_table.append(inheritors)
 
 
 # ----- parse inheritances ---------------------------------------------------------------
 
-def parse_inheritance(cursor):
-    if cursor.kind == cursor.kind.CXX_BASE_SPECIFIER:
-        position = len(interface_name) - 1
-        for k in range(len(inherits_table[position]) + 1):
-            if convert_namespace(cursor.type.spelling) in interface_name:
-                inherits_location = interface_name.index(convert_namespace(cursor.type.spelling))
-                for n in range(len(inherits_table[inherits_location])):
-                    inherits_table[position].append(inherits_table[inherits_location][n])
-        inherits_table[position].append(convert_namespace(cursor.type.spelling))
+def parse_inheritance(cursor: Cursor, result: List[str]):
+    if cursor.kind != cursor.kind.CXX_BASE_SPECIFIER:
+        return
+    cursor_type = convert_namespace(cursor.type.spelling)
+    inheritors = []
+    if cursor_type in interface_name:
+        inheritors = inherits_table[interface_name.index(cursor_type)].copy()
+    inheritors.append(cursor_type)
+    for inheritor in inheritors:
+        if inheritor not in result:
+            result.append(inheritor)
 
 
 # ----- parse methods ---------------------------------------------------------------
 
-def parse_methods(cursor, method_count_local):
-    if cursor.kind == cursor.kind.CXX_METHOD:
-        method_count_local = method_count_local + 1
-        position = len(interface_name) - 1
-
-        method_args[position].append("")
-        method_args[position][method_count_local - 1] = []
-
-        method_name[position].append(cursor.spelling)
-
-        method_return[position].append(create_struct_prefix(cursor.result_type) + convert_type(cursor.result_type))
-        method_args_content = parse_method_arguments(cursor)
-        method_args[position][method_count_local - 1].append("".join(method_args_content))
-    return method_count_local
+def parse_methods(cursor: Cursor, position: int):
+    if cursor.kind != cursor.kind.CXX_METHOD:
+        return
+    method_name[position].append(cursor.spelling)
+    method_return[position].append(create_struct_prefix(cursor.result_type) + convert_type(cursor.result_type))
+    method_args[position].append([', '.join(_parse_method_arguments(cursor))])
 
 
-def parse_method_arguments(cursor):
-    p = 0
-    method_args_content = []
+def _parse_method_arguments(cursor: Cursor) -> List[str]:
+    args = []
     for cursor_child in cursor.get_arguments():
-        if p > 0:
-            method_args_content.append(", ")
-        method_args_content.append(create_struct_prefix(cursor_child.type) + convert_type(cursor_child.type))
-        method_args_content.append(" ")
-        method_args_content.append(_convert_method_args_name(cursor_child.spelling))
-        p = p + 1
-    return method_args_content
+        argument_type = create_struct_prefix(cursor_child.type) + convert_type(cursor_child.type)
+        name = _convert_method_args_name(cursor_child.spelling)
+        args.append(f'{argument_type} {name}')
+    return args
 
 
 # ----- parse variables ---------------------------------------------------------------
 
 
 def parse_variables(cursor):
-    if cursor.kind == cursor.kind.VAR_DECL and cursor.type.kind == cursor.type.kind.TYPEDEF:
-        variable_return.append(convert_type(cursor.type))
-        variable_name.append(convert_cursor(cursor))
-        variable_value.append(_visit_children(list(cursor.get_children())[-1]))
+    if cursor.kind != cursor.kind.VAR_DECL or cursor.type.kind != cursor.type.kind.TYPEDEF:
+        return
+    variable_return.append(convert_type(cursor.type))
+    variable_name.append(convert_cursor(cursor))
+    variable_value.append(_visit_children(list(cursor.get_children())[-1]))
 
 # ----- parse structs ---------------------------------------------------------------
 
@@ -403,11 +387,9 @@ def generate_interface():
 # noinspection SpellCheckingInspection
 def generate_methods(i):
     string = ""
-    methods_location = 0
-    for k in range(len(inherits_table[i])):
-        if inherits_table[i][k] in interface_name:
-            methods_location = interface_name.index(inherits_table[i][k])
-        string += "    /* methods derived from \"{}\": */\n".format(inherits_table[i][k])
+    for inheritor in inherits_table[i]:
+        methods_location = interface_name.index(inheritor)
+        string += "    /* methods derived from \"{}\": */\n".format(inheritor)
         for j in range(len(method_name[methods_location])):
             if method_args[methods_location][j][0] == "":
                 string += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\n".format(
