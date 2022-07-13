@@ -14,6 +14,13 @@ struct PFactoryInfo
 
 namespace Vst {
 
+#define ATTR_STYLE "style"
+
+namespace Attributes
+{
+	const CString kStyle = ATTR_STYLE;
+};
+
 static const UnitID kNoParentUnitId = -1;
 const Speaker kSpeakerL = 1 << 0;
 const Speaker kSpeakerR = 1 << 1;
