@@ -11,25 +11,32 @@ from clang_helpers import create_translation_unit
 
 # ----- parse ----------------------------------------------------------------------------------------------------------
 
-def parse_header(cursor, include_path):
+def parse_header(cursor: Cursor):
+    if cursor.kind != cursor.kind.TRANSLATION_UNIT:
+        return
+    root_path = normalise_link(str(Path(cursor.spelling).parents[2]))
+    already_parsed_includes = []
     for cursor_child in cursor.get_children():
         cursor_child_location = normalise_link(cursor_child.location.file.name)
-        if not cursor_child_location.startswith(include_path) or cursor_child_location in includes_table:
+        if not cursor_child_location.startswith(root_path) or cursor_child_location in already_parsed_includes:
             continue
-        includes_table.append(cursor_child_location)
-        parse_namespace(cursor_child)
+        already_parsed_includes.append(cursor_child_location)
+        if parse_namespace(cursor_child):
+            continue
         parsing(cursor_child)
 
 
-def parse_namespace(cursor: Cursor, namespace: str = ''):
+def parse_namespace(cursor: Cursor, namespace: str = '') -> bool:
     if cursor.kind != cursor.kind.NAMESPACE:
-        return
+        return False
     if namespace:
         namespace += '::'
     namespace += cursor.spelling
     for cursor_child in cursor.get_children():
-        parse_namespace(cursor_child, namespace)
+        if parse_namespace(cursor_child, namespace):
+            continue
         parsing(cursor_child, namespace)
+    return True
 
 
 def parsing(cursor: Cursor, namespace: str = ''):
@@ -87,6 +94,7 @@ def parse_interfaces(cursor):
         return
     children = list(cursor.get_children())
     if not children:
+        # this is only a forward declaration
         return
     interface_source.append(convert_cursor_location(cursor.location))
     interface_description.append(cursor.brief_comment)
@@ -159,6 +167,7 @@ def parse_structs(cursor):
         return
     children = list(cursor.get_children())
     if not children:
+        # this is only a forward declaration
         return
     struct_table.append(convert_cursor(cursor))
     struct_source.append(convert_cursor_location(cursor.location))
@@ -603,7 +612,6 @@ interface_name = []
 inherits_table = []
 
 includes_list = []
-includes_table = []
 
 method_name = []
 method_return = []
@@ -637,7 +645,6 @@ def clear_arrays():
     global interface_name
     global inherits_table
     global includes_list
-    global includes_table
     global method_name
     global method_return
     global method_args
@@ -664,7 +671,6 @@ def clear_arrays():
     inherits_table = []
 
     includes_list = []
-    includes_table = []
 
     method_name = []
     method_return = []
@@ -712,7 +718,7 @@ if __name__ == '__main__':
     tu = create_translation_unit(Path(filename[0]), include_path)
 
 # ----- Parse -----
-    parse_header(tu.cursor, include_path)
+    parse_header(tu.cursor)
     header_content = generate_conversion(normalise_link(tu.spelling))
 
 # ----- Write -----
