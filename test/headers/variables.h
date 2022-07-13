@@ -14,6 +14,7 @@ struct PFactoryInfo
 
 namespace Vst {
 
+static const UnitID kNoParentUnitId = -1;
 const Speaker kSpeakerL = 1 << 0;
 const Speaker kSpeakerR = 1 << 1;
 const Speaker kSpeakerC = 1 << 2;

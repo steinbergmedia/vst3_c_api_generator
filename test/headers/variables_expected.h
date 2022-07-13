@@ -1,3 +1,4 @@
+static const Steinberg_UnitID Steinberg_Vst_kNoParentUnitId = -1;
 static const Steinberg_Vst_Speaker Steinberg_Vst_kSpeakerL = 1 << 0;
 static const Steinberg_Vst_Speaker Steinberg_Vst_kSpeakerR = 1 << 1;
 static const Steinberg_Vst_Speaker Steinberg_Vst_kSpeakerC = 1 << 2;

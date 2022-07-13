@@ -15,6 +15,7 @@ typedef int32 tresult;
 typedef int8 TUID[16];
 typedef const char8* FIDString
 typedef const tchar* CString;
+typedef int32 UnitID;
 
 class FUID;
 struct PClassInfo2;
