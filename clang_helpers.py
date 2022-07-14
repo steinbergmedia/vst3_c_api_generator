@@ -20,17 +20,18 @@ def create_translation_unit(header_path: Path, include_path: str):
 
 def is_kind(cursor_or_type: [Cursor, Type], kind: str) -> bool:
     if type(cursor_or_type) == Cursor:
-        return cursor_or_type.kind == CursorKind.__dict__.get(kind, None)
+        kind_class = CursorKind
     else:
-        return cursor_or_type.kind == TypeKind.__dict__.get(kind, None)
+        kind_class = TypeKind
+    return cursor_or_type.kind == kind_class.__dict__.get(kind, None)
 
 
 def is_not_kind(cursor_or_type: [Cursor, Type], kind: str) -> bool:
     return not is_kind(cursor_or_type, kind)
 
 
-def is_valid(cursor_or_type: [Cursor, Type]) -> bool:
-    return not is_kind(cursor_or_type, 'INVALID')
+def is_valid(cursor_type: Type) -> bool:
+    return is_not_kind(cursor_type, 'INVALID')
 
 
 TokenGroup = TGroup
