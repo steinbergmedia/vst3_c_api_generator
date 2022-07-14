@@ -4,15 +4,15 @@ from optparse import OptionParser
 from pathlib import Path
 from typing import List
 
-from clang.cindex import TokenGroup, SourceLocation, Cursor, Type
+from clang.cindex import SourceLocation, Cursor, Type
 
-from clang_helpers import create_translation_unit
+from clang_helpers import create_translation_unit, TokenGroup, is_not_kind, is_valid, is_kind
 
 
 # ----- parse ----------------------------------------------------------------------------------------------------------
 
 def parse_header(cursor: Cursor):
-    if cursor.kind != cursor.kind.TRANSLATION_UNIT:
+    if is_not_kind(cursor, 'TRANSLATION_UNIT'):
         return
     root_path = normalise_link(str(Path(cursor.spelling).parents[2]))
     already_parsed_includes = []
@@ -27,7 +27,7 @@ def parse_header(cursor: Cursor):
 
 
 def parse_namespace(cursor: Cursor, namespace: str = '') -> bool:
-    if cursor.kind != cursor.kind.NAMESPACE:
+    if is_not_kind(cursor, 'NAMESPACE'):
         return False
     if namespace:
         namespace += '::'
@@ -49,7 +49,7 @@ def parsing(cursor: Cursor, namespace: str = ''):
 
 
 def parse_iid(cursor: Cursor, namespace: str):
-    if cursor.kind != cursor.kind.VAR_DECL or not cursor.spelling.endswith('_iid'):
+    if is_not_kind(cursor, 'VAR_DECL') or not cursor.spelling.endswith('_iid'):
         return
     id_tokens = _get_token_spellings_from_extent(cursor)
     interface = convert_namespace(namespace)
@@ -75,10 +75,11 @@ def store_interface_typedefs(cursor):
         interface_typedef_name.append(name)
 
 
+# noinspection SpellCheckingInspection
 def parse_typedefs(cursor):
-    if cursor.kind != cursor.kind.TYPEDEF_DECL and cursor.kind != cursor.kind.TYPE_ALIAS_DECL:
+    if is_not_kind(cursor, 'TYPEDEF_DECL') and is_not_kind(cursor, 'TYPE_ALIAS_DECL'):
         return None, None
-    if cursor.underlying_typedef_type.kind == cursor.type.kind.CONSTANTARRAY:
+    if is_kind(cursor.underlying_typedef_type, 'CONSTANTARRAY'):
         return_type = convert_type(cursor.underlying_typedef_type.element_type)
         name = '{}[{}]'.format(convert_type(cursor.type), cursor.underlying_typedef_type.element_count)
     else:
@@ -90,7 +91,7 @@ def parse_typedefs(cursor):
 
 
 def parse_interfaces(cursor):
-    if cursor.kind != cursor.kind.CLASS_DECL or cursor.spelling in blacklist:
+    if is_not_kind(cursor, 'CLASS_DECL') or cursor.spelling in blacklist:
         return
     children = list(cursor.get_children())
     if not children:
@@ -118,7 +119,7 @@ def parse_interfaces(cursor):
 # ----- parse inheritances ---------------------------------------------------------------
 
 def parse_inheritance(cursor: Cursor, result: List[str]):
-    if cursor.kind != cursor.kind.CXX_BASE_SPECIFIER:
+    if is_not_kind(cursor, 'CXX_BASE_SPECIFIER'):
         return
     cursor_type = convert_namespace(cursor.type.spelling)
     inheritors = []
@@ -133,7 +134,7 @@ def parse_inheritance(cursor: Cursor, result: List[str]):
 # ----- parse methods ---------------------------------------------------------------
 
 def parse_methods(cursor: Cursor, position: int):
-    if cursor.kind != cursor.kind.CXX_METHOD:
+    if is_not_kind(cursor, 'CXX_METHOD'):
         return
     method_name[position].append(cursor.spelling)
     method_return[position].append(create_struct_prefix(cursor.result_type) + convert_type(cursor.result_type))
@@ -153,7 +154,7 @@ def _parse_method_arguments(cursor: Cursor) -> List[str]:
 
 
 def parse_variables(cursor):
-    if cursor.kind != cursor.kind.VAR_DECL or cursor.type.kind != cursor.type.kind.TYPEDEF:
+    if is_not_kind(cursor, 'VAR_DECL') or is_not_kind(cursor.type, 'TYPEDEF'):
         return
     variable_return.append(convert_type(cursor.type))
     variable_name.append(convert_cursor(cursor))
@@ -162,8 +163,9 @@ def parse_variables(cursor):
 # ----- parse structs ---------------------------------------------------------------
 
 
+# noinspection SpellCheckingInspection
 def parse_structs(cursor):
-    if cursor.kind != cursor.kind.STRUCT_DECL or cursor.spelling in blacklist:
+    if is_not_kind(cursor, 'STRUCT_DECL') or cursor.spelling in blacklist:
         return
     children = list(cursor.get_children())
     if not children:
@@ -173,11 +175,11 @@ def parse_structs(cursor):
     struct_source.append(convert_cursor_location(cursor.location))
     fields = []
     for cursor_child in children:
-        if parse_enum(cursor_child) or cursor_child.kind != cursor_child.kind.FIELD_DECL:
+        if parse_enum(cursor_child) or is_not_kind(cursor_child, 'FIELD_DECL'):
             continue
         cursor_child_type = cursor_child.type
         struct_args = ''
-        if cursor_child.type.kind == cursor_child.type.kind.CONSTANTARRAY:
+        if is_kind(cursor_child.type, 'CONSTANTARRAY'):
             cursor_child_type = cursor_child_type.element_type
             struct_args = _visit_children(list(cursor_child.get_children())[-1])
         struct_return = create_struct_prefix(cursor_child_type) + convert_type(cursor_child_type)
@@ -192,7 +194,7 @@ def parse_structs(cursor):
 
 
 def parse_enum(cursor: Cursor) -> bool:
-    if cursor.kind != cursor.kind.ENUM_DECL:
+    if is_not_kind(cursor, 'ENUM_DECL'):
         return False
     if cursor.spelling:
         enum_name.append(convert_cursor(cursor))
@@ -201,7 +203,7 @@ def parse_enum(cursor: Cursor) -> bool:
     enum_source.append(convert_cursor_location(cursor.location))
     enum_definitions = []
     for cursor_child in cursor.get_children():
-        if cursor_child.kind != cursor_child.kind.ENUM_CONSTANT_DECL:
+        if is_not_kind(cursor_child, 'ENUM_CONSTANT_DECL'):
             continue
         enum_definitions.append(create_namespace_prefix(cursor_child) + cursor_child.spelling)
         enum_definitions.append(_visit_children(cursor_child, use_definitions=False))
@@ -489,29 +491,29 @@ def _get_binary_operator(cursor: Cursor, children: List[Cursor]) -> str:
 
 def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
     children = list(cursor.get_children())
-    if cursor.kind == cursor.kind.BINARY_OPERATOR:
+    if is_kind(cursor, 'BINARY_OPERATOR'):
         operator = _get_binary_operator(cursor, children)
         return '{} {} {}'.format(_visit_children(children[0], use_definitions), operator,
                                  _visit_children(children[1], use_definitions))
-    elif cursor.kind == cursor.kind.PAREN_EXPR:
+    elif is_kind(cursor, 'PAREN_EXPR'):
         return '({})'.format(_visit_children(children[0], use_definitions))
-    elif cursor.kind == cursor.kind.UNARY_OPERATOR:
+    elif is_kind(cursor, 'UNARY_OPERATOR'):
         operator = list(cursor.get_tokens())[0].spelling
         return '{}{}'.format(operator, _visit_children(children[0], use_definitions))
-    elif cursor.kind == cursor.kind.DECL_REF_EXPR:
+    elif is_kind(cursor, 'DECL_REF_EXPR'):
         if use_definitions:
             return _visit_children(cursor.get_definition(), use_definitions)
         else:
             return convert_cursor(cursor)
-    elif cursor.kind == cursor.kind.UNEXPOSED_EXPR or cursor.kind == cursor.kind.ENUM_CONSTANT_DECL:
+    elif is_kind(cursor, 'UNEXPOSED_EXPR') or is_kind(cursor, 'ENUM_CONSTANT_DECL'):
         if children:
             return _visit_children(children[0], use_definitions)
         return ''
-    elif cursor.kind == cursor.kind.VAR_DECL:
+    elif is_kind(cursor, 'VAR_DECL'):
         return _visit_children(children[-1], use_definitions)
-    elif cursor.kind == cursor.kind.CSTYLE_CAST_EXPR or cursor.kind == cursor.kind.CXX_FUNCTIONAL_CAST_EXPR:
+    elif is_kind(cursor, 'CSTYLE_CAST_EXPR') or is_kind(cursor, 'CXX_FUNCTIONAL_CAST_EXPR'):
         return '({}) {}'.format(convert_namespace(children[0].spelling), _visit_children(children[1]), use_definitions)
-    elif cursor.kind == cursor.kind.INTEGER_LITERAL or cursor.kind == cursor.kind.STRING_LITERAL:
+    elif is_kind(cursor, 'INTEGER_LITERAL') or is_kind(cursor, 'STRING_LITERAL'):
         if cursor.spelling:
             return cursor.spelling
         return list(cursor.get_tokens())[0].spelling
@@ -528,11 +530,11 @@ def _get_token_spellings_from_extent(cursor: Cursor) -> List[str]:
 # noinspection SpellCheckingInspection
 def create_struct_prefix(cursor_type: Type) -> str:
     pointee = cursor_type.get_pointee()
-    while pointee.kind != cursor_type.kind.INVALID:
+    while is_valid(pointee):
         cursor_type = pointee
         pointee = cursor_type.get_pointee()
     declaration = cursor_type.get_declaration()
-    if declaration.kind == declaration.kind.STRUCT_DECL or declaration.kind == declaration.kind.CLASS_DECL:
+    if is_kind(declaration, 'STRUCT_DECL') or is_kind(declaration, 'CLASS_DECL'):
         return 'struct '
     return ''
 
@@ -566,7 +568,7 @@ def _get_namespaces(cursor: Cursor) -> List[str]:
         cursor = cursor_definition
     cursor = cursor.lexical_parent
     namespaces = []
-    while cursor and cursor.kind != cursor.kind.TRANSLATION_UNIT:
+    while cursor and is_not_kind(cursor, 'TRANSLATION_UNIT'):
         if cursor.spelling:
             namespaces.append(cursor.spelling)
         cursor = cursor.lexical_parent
@@ -591,10 +593,10 @@ def convert_type(cursor_type: Type) -> str:
     num_pointers = 0
     num_consts = 0
     pointee = cursor_type.get_pointee()
-    while pointee.kind != pointee.kind.INVALID:
+    while is_valid(pointee):
         if cursor_type.is_const_qualified():
             num_consts += 1
-        if cursor_type.kind == cursor_type.kind.RVALUEREFERENCE:
+        if is_kind(cursor_type, 'RVALUEREFERENCE'):
             num_pointers += 1
         cursor_type = pointee
         num_pointers += 1
