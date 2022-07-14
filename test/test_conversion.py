@@ -12,9 +12,8 @@ class TestConversion(unittest.TestCase):
     @staticmethod
     def _convert_header(header_name: str) -> str:
         header_path = Path('headers', f'{header_name}.h').absolute()
-        include_path = str(header_path.parents[2])
-        translation_unit = create_translation_unit(header_path, include_path)
-        parse_header(translation_unit.cursor, include_path)
+        translation_unit = create_translation_unit(header_path, str(header_path.parents[2]))
+        parse_header(translation_unit.cursor)
         result = generate_conversion(normalise_link(translation_unit.spelling))
         translation_unit.reparse(unsaved_files=[(header_path, '')])
         return result
