@@ -41,7 +41,9 @@ add_custom_command(TARGET GeneratorTest
                     COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}
                     COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
                     )
-#add_custom_command(TARGET GeneratorTest
-#                    POST_BUILD
-#                    COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
-#                    )
+
+add_library(impl_test MODULE
+            c_impl_test/factory.c
+)
+target_include_directories(impl_test PRIVATE ${CMAKE_BINARY_DIR}
+)
