@@ -308,6 +308,33 @@ def generate_forward():
     string += "\n"
     return string
 
+def generate_result_values():
+    string = ""
+    string += "#if COM_COMPATIBLE\n"
+    string += "static const Steinberg_tresult Steinberg_kNoInterface = 0x80004002L;\n"
+    string += "static const Steinberg_tresult Steinberg_kResultOk = 0x00000000L;\n"
+    string += "static const Steinberg_tresult Steinberg_kResultTrue = 0x00000000L;\n"
+    string += "static const Steinberg_tresult Steinberg_kResultFalse = 0x00000001L;\n"
+    string += "static const Steinberg_tresult Steinberg_kInvalidArgument = 0x80070057L;\n"
+    string += "static const Steinberg_tresult Steinberg_kNotImplemented = 0x80004001L;\n"
+    string += "static const Steinberg_tresult Steinberg_kInternalError = 0x80004005L;\n"
+    string += "static const Steinberg_tresult Steinberg_kNotInitialized = 0x8000FFFFL;\n"
+    string += "static const Steinberg_tresult Steinberg_kOutOfMemory = 0x8007000EL;\n"
+    string += "\n"
+    string += "#else\n"
+    string += "static const Steinberg_tresult Steinberg_kNoInterface = -1;\n"
+    string += "static const Steinberg_tresult Steinberg_kResultOk = 0;\n"
+    string += "static const Steinberg_tresult Steinberg_kResultTrue = 0;\n"
+    string += "static const Steinberg_tresult Steinberg_kResultFalse = 1;\n"
+    string += "static const Steinberg_tresult Steinberg_kInvalidArgument = 2;\n"
+    string += "static const Steinberg_tresult Steinberg_kNotImplemented = 3;\n"
+    string += "static const Steinberg_tresult Steinberg_kInternalError = 4;\n"
+    string += "static const Steinberg_tresult Steinberg_kNotInitialized = 5;\n"
+    string += "static const Steinberg_tresult Steinberg_kOutOfMemory = 6;\n"
+    string += "#endif\n"
+    string += "\n"
+    return string
+
 
 def generate_enums():
     string = ""
@@ -444,6 +471,7 @@ def generate_variables():
 def generate_conversion(source_file: str):
     string = generate_standard(source_file)
     string += generate_forward()
+    string += generate_result_values()
     string += generate_interface_typedefs()
     string += generate_enums()
     string += generate_variables()
