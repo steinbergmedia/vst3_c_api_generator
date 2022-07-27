@@ -171,8 +171,6 @@ def parse_structs(cursor):
     if not children:
         # this is only a forward declaration
         return
-    struct_table.append(convert_cursor(cursor))
-    struct_source.append(convert_cursor_location(cursor.location))
     fields = []
     for cursor_child in children:
         if parse_enum(cursor_child) or is_not_kind(cursor_child, 'FIELD_DECL'):
@@ -187,7 +185,10 @@ def parse_structs(cursor):
         if struct_args:
             field = field[:-1] + f'[{struct_args}];'
         fields.append(field)
-    struct_content.append(fields)
+    if fields:
+        struct_table.append(convert_cursor(cursor))
+        struct_source.append(convert_cursor_location(cursor.location))
+        struct_content.append(fields)
 
 
 # ----- parse enums ---------------------------------------------------------------
