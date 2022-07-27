@@ -512,7 +512,7 @@ def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
         return ''
     elif is_kind(cursor, 'VAR_DECL'):
         return _visit_children(children[-1], use_definitions)
-    elif is_kind(cursor, 'CSTYLE_CAST_EXPR') or is_kind(cursor, 'CXX_FUNCTIONAL_CAST_EXPR'):
+    elif is_kind(cursor, 'CSTYLE_CAST_EXPR') or is_kind(cursor, 'CXX_FUNCTIONAL_CAST_EXPR') or is_kind(cursor, "CXX_STATIC_CAST_EXPR"):
         return '({}) {}'.format(convert_namespace(children[0].spelling), _visit_children(children[1]), use_definitions)
     elif is_kind(cursor, 'INTEGER_LITERAL') or is_kind(cursor, 'STRING_LITERAL'):
         if cursor.spelling:
