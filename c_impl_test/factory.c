@@ -3,17 +3,6 @@
 #include "string.h"
 
 
-static const int kNoInterface = (0x80004002L);
-static const int kResultOk = (0x00000000L);
-static const int kResultTrue = (0x00000000L);
-static const int kResultFalse = (0x00000001L);
-static const int kInvalidArgument = (0x80070057L);
-static const int kNotImplemented = (0x80004001L);
-static const int kInternalError = (0x80004005L);
-static const int kNotInitialized = (0x8000FFFFL);
-static const int kOutOfMemory = (0x8007000EL);
-
-
 int compare_iid(const Steinberg_TUID id1, const Steinberg_TUID id2) {
 	return memcmp(id1, id2, sizeof(Steinberg_TUID)) == 0;
 }
@@ -29,31 +18,31 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE myQueryInterface (void* thisInterface, 
 	if (compare_iid(iid, Steinberg_FUnknown_iid)) {
 		myAddRef(thisInterface);
 		*obj = thisInterface;
-		return kResultTrue;
+		return Steinberg_kResultTrue;
 	}
 	if (compare_iid(iid, Steinberg_IPluginFactory_iid)) {
 		myAddRef(thisInterface);
 		*obj = thisInterface;
-		return kResultTrue;
+		return Steinberg_kResultTrue;
 	}
 	if (compare_iid(iid, Steinberg_IPluginFactory2_iid)) {
 		myAddRef(thisInterface);
 		*obj = thisInterface;
-		return kResultTrue;
+		return Steinberg_kResultTrue;
 	}
-	return kNoInterface;
+	return Steinberg_kNoInterface;
 }
 
 /* methods derived from "Steinberg_IPluginFactory": */
 Steinberg_tresult SMTG_STDMETHODCALLTYPE myGetFactoryInfo (void* thisInterface, struct Steinberg_PFactoryInfo* info){
 	if (info == 0) {
-		return kInvalidArgument;
+		return Steinberg_kInvalidArgument;
 	}
 	strcpy(info->vendor, "test_vendor");
 	strcpy(info->email, "test_email");
 	strcpy(info->url, "test_url");
 	info->flags = 16;
-	return kResultTrue;
+	return Steinberg_kResultTrue;
 }
 Steinberg_int32 SMTG_STDMETHODCALLTYPE myCountClasses (void* thisInterface){
 	return 2;
@@ -66,10 +55,10 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE myCreateInstance (void* thisInterface, 
 /* methods defined in "Steinberg_IPluginFactory2": */
 Steinberg_tresult SMTG_STDMETHODCALLTYPE myGetClassInfo2 (void* thisInterface, Steinberg_int32 index, struct Steinberg_PClassInfo2* info){
 	if (index > 1 || info == 0) {
-		return kInvalidArgument;
+		return Steinberg_kInvalidArgument;
 	}
 	memcpy(info, &classes[index], sizeof(struct Steinberg_PClassInfo2));
-	return kResultTrue;
+	return Steinberg_kResultTrue;
 }
 
 static const Steinberg_IPluginFactory2Vtbl myPluginFactoryVtbl = {

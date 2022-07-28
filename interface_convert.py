@@ -310,6 +310,11 @@ def generate_forward():
 
 def generate_result_values():
     string = ""
+    string += "\n"
+    string += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    string += "Result value definitions\n"
+    string += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    string += "\n"
     string += "#if COM_COMPATIBLE\n"
     string += "static const Steinberg_tresult Steinberg_kNoInterface = 0x80004002L;\n"
     string += "static const Steinberg_tresult Steinberg_kResultOk = 0x00000000L;\n"
