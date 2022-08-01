@@ -6,6 +6,9 @@
 // Description : <#Description#>
 //------------------------------------------------------------------------
 
+#include <stdint.h>
+typedef int32_t Vst_ParamID;
+
 #include "memory.h"
 #include "stdlib.h"
 #include "string.h"
@@ -31,8 +34,11 @@ struct MyAGainAudioProcessorVtbl
 
 typedef struct
 {
-	const struct MyAGainAudioProcessorVtbl* vtbl;
+	const struct Steinberg_Vst_IComponentVtbl* componentVtbl;
+	const struct Steinberg_Vst_IConnectionPointVtbl* connectionPointVtbl;
+	const struct Steinberg_Vst_IAudioProcessorVtbl* audioProcessorVtbl;
 	Steinberg_int32 refCount;
+	struct Steinberg_Vst_IConnectionPoint* connectionPoint;
 } MyAGainAudioProcessor;
 
 struct MyAGainEditControllerVtbl
@@ -44,7 +50,9 @@ struct MyAGainEditControllerVtbl
 
 typedef struct
 {
-	const struct MyAGainEditControllerVtbl* vtbl;
+	const struct Steinberg_Vst_IEditControllerVtbl* editControllerVtbl;
+	const struct Steinberg_Vst_IConnectionPointVtbl* connectionPointVtbl;
+	const struct Steinberg_Vst_IEditController2Vtbl* editController2Vtbl;
 	Steinberg_int32 refCount;
 } MyAGainEditController;
 
@@ -56,6 +64,16 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_AddRef (void* thisInterfa
 	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)thisInterface;
 	instance->refCount += 1;
 	return instance->refCount;
+}
+
+Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_AddRefConnectionPoint (void* thisInterface)
+{
+	return AGainProcessor_AddRef ((int64_t)thisInterface - 8);
+}
+
+Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_AddRefAudioProcessor (void* thisInterface)
+{
+	return AGainProcessor_AddRef ((int64_t)thisInterface - 16);
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_Release (void* thisInterface)
@@ -70,6 +88,16 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_Release (void* thisInterf
 	return instance->refCount;
 }
 
+Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_ReleaseConnectionPoint (void* thisInterface)
+{
+	return AGainProcessor_Release ((int64_t)thisInterface - 8);
+}
+
+Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_ReleaseAudioProcessor (void* thisInterface)
+{
+	return AGainProcessor_Release ((int64_t)thisInterface - 16);
+}
+
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface (void* thisInterface,
                                                                         const Steinberg_TUID iid,
                                                                         void** obj)
@@ -81,19 +109,37 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface (void* th
 		*obj = instance;
 		return Steinberg_kResultTrue;
 	}
-	if (compare_iid (Steinberg_Vst_IAudioProcessor_iid, iid))
-	{
-		AGainProcessor_AddRef (thisInterface);
-		*obj = instance;
-		return Steinberg_kResultTrue;
-	}
 	if (compare_iid (Steinberg_Vst_IComponent_iid, iid))
 	{
 		AGainProcessor_AddRef (thisInterface);
 		*obj = instance;
 		return Steinberg_kResultTrue;
 	}
+	if (compare_iid (Steinberg_Vst_IConnectionPoint_iid, iid))
+	{
+		AGainProcessor_AddRef (thisInterface);
+		*obj = (void*)((int64_t)instance + 8);
+		return Steinberg_kResultTrue;
+	}
+	if (compare_iid (Steinberg_Vst_IAudioProcessor_iid, iid))
+	{
+		AGainProcessor_AddRef (thisInterface);
+		*obj = (void*)((int64_t)instance + 16);
+		return Steinberg_kResultTrue;
+	}
 	return Steinberg_kResultFalse;
+}
+
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterfaceConnectionPoint (
+    void* thisInterface, const Steinberg_TUID iid, void** obj)
+{
+	return AGainProcessor_QueryInterface ((int64_t)thisInterface - 8, iid, obj);
+}
+
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterfaceAudioProcessor (
+    void* thisInterface, const Steinberg_TUID iid, void** obj)
+{
+	return AGainProcessor_QueryInterface ((int64_t)thisInterface - 16, iid, obj);
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE
@@ -110,13 +156,17 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Terminate (void* thisInt
 Steinberg_tresult SMTG_STDMETHODCALLTYPE
 AGainProcessor_Connect (void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
 {
-	return Steinberg_kNotImplemented;
+	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)(int64_t)thisInterface - 8;
+	instance->connectionPoint = other;
+	return Steinberg_kResultTrue;
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE
 AGainProcessor_Disconnect (void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
 {
-	return Steinberg_kNotImplemented;
+	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)(int64_t)thisInterface - 8;
+	instance->connectionPoint = NULL;
+	return Steinberg_kResultTrue;
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE
@@ -273,6 +323,19 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface (void* t
 		*obj = instance;
 		return Steinberg_kResultTrue;
 	}
+	if (compare_iid (Steinberg_Vst_IConnectionPoint_iid, iid))
+	{
+		AGainController_AddRef (thisInterface);
+		*obj = (void*)((int64_t)instance + 8);
+		return Steinberg_kResultTrue;
+	}
+	if (compare_iid (Steinberg_Vst_IEditController2_iid, iid))
+	{
+		AGainController_AddRef (thisInterface);
+		*obj = (void*)((int64_t)instance + 16);
+		return Steinberg_kResultTrue;
+	}
+	return Steinberg_kNoInterface;
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE
@@ -407,13 +470,14 @@ static const struct MyAGainAudioProcessorVtbl myAGainAudioProcessorVtbl = {
      AGainProcessor_SetIoMode, AGainProcessor_GetBusCount, AGainProcessor_GetBusInfo,
      AGainProcessor_GetRoutingInfo, AGainProcessor_ActivateBus, AGainProcessor_SetActive,
      AGainProcessor_SetState, AGainProcessor_GetState},
-    {AGainProcessor_QueryInterface, AGainProcessor_AddRef, AGainProcessor_Release,
-     AGainProcessor_Connect, AGainProcessor_Disconnect, AGainProcessor_Notify},
-    {AGainProcessor_QueryInterface, AGainProcessor_AddRef, AGainProcessor_Release,
-     AGainProcessor_SetBusArrangements, AGainProcessor_GetBusArrangement,
-     AGainProcessor_CanProcessSampleSize, AGainProcessor_GetLatencySamples,
-     AGainProcessor_SetupProcessing, AGainProcessor_SetProcessing, AGainProcessor_Process,
-     AGainProcessor_GetTailSamples},
+    {AGainProcessor_QueryInterfaceConnectionPoint, AGainProcessor_AddRefConnectionPoint,
+     AGainProcessor_ReleaseConnectionPoint, AGainProcessor_Connect, AGainProcessor_Disconnect,
+     AGainProcessor_Notify},
+    {AGainProcessor_QueryInterfaceAudioProcessor, AGainProcessor_AddRefAudioProcessor,
+     AGainProcessor_ReleaseAudioProcessor, AGainProcessor_SetBusArrangements,
+     AGainProcessor_GetBusArrangement, AGainProcessor_CanProcessSampleSize,
+     AGainProcessor_GetLatencySamples, AGainProcessor_SetupProcessing, AGainProcessor_SetProcessing,
+     AGainProcessor_Process, AGainProcessor_GetTailSamples},
 };
 
 static const struct MyAGainEditControllerVtbl myAGainEditControllerVtbl = {
@@ -501,7 +565,9 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE myCreateInstance (void* thisInterface,
 	{
 		MyAGainAudioProcessor* instance =
 		    (MyAGainAudioProcessor*)malloc (sizeof (MyAGainAudioProcessor));
-		instance->vtbl = &myAGainAudioProcessorVtbl;
+		instance->componentVtbl = &myAGainAudioProcessorVtbl.component;
+		instance->connectionPointVtbl = &myAGainAudioProcessorVtbl.connectionPoint;
+		instance->audioProcessorVtbl = &myAGainAudioProcessorVtbl.audioProcessor;
 		instance->refCount = 1;
 		*obj = instance;
 		return Steinberg_kResultTrue;
@@ -510,7 +576,9 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE myCreateInstance (void* thisInterface,
 	{
 		MyAGainEditController* instance =
 		    (MyAGainEditController*)malloc (sizeof (MyAGainEditController));
-		instance->vtbl = &myAGainEditControllerVtbl;
+		instance->editControllerVtbl = &myAGainEditControllerVtbl.editController;
+		instance->connectionPointVtbl = &myAGainEditControllerVtbl.connectionPoint;
+		instance->editController2Vtbl = &myAGainEditControllerVtbl.editController2;
 		instance->refCount = 1;
 		*obj = instance;
 		return Steinberg_kResultTrue;
