@@ -14,7 +14,7 @@ struct MyAGainAudioProcessorVtbl {
 	Steinberg_Vst_IAudioProcessorVtbl audioProcessor;
 };
 typedef struct {
-	struct MyAGainAudioProcessorVtbl* vtbl;
+	const struct MyAGainAudioProcessorVtbl* vtbl;
 	Steinberg_int32 refCount;
 } MyAGainAudioProcessor;
 
@@ -25,7 +25,7 @@ struct MyAGainEditControllerVtbl {
 	Steinberg_Vst_IEditController2Vtbl editController2;
 };
 typedef struct {
-	struct MyAGainEditControllerVtbl* vtbl;
+	const struct MyAGainEditControllerVtbl* vtbl;
 	Steinberg_int32 refCount;
 } MyAGainEditController;
 
@@ -65,6 +65,7 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface(void* thi
 		*obj = instance;
 		return Steinberg_kResultTrue;
 	}
+	return Steinberg_kResultFalse;
 };
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Initialize(void* thisInterface, struct Steinberg_FUnknown* context) {
@@ -437,7 +438,7 @@ SMTG_EXPORT_SYMBOL Steinberg_IPluginFactory* SMTG_STDMETHODCALLTYPE GetPluginFac
 	classes[1].version[0] = 0;
 	classes[1].sdkVersion[0] = 0;
 
-	return &myPluginFactory;
+	return (Steinberg_IPluginFactory*)&myPluginFactory;
 }
 
 #if __APPLE__
