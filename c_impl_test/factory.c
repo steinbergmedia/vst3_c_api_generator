@@ -16,6 +16,12 @@ int compare_iid (const Steinberg_TUID id1, const Steinberg_TUID id2)
 	return memcmp (id1, id2, sizeof (Steinberg_TUID)) == 0;
 }
 
+static const Steinberg_TUID audioProcessorUID =
+    SMTG_INLINE_UID (0xD87D8E9C, 0xE4514B02, 0xB9FCF354, 0xFAC9219C);
+
+static const Steinberg_TUID editControllerUID =
+    SMTG_INLINE_UID (0xBACB8EB9, 0xAFAD4C09, 0x90D5893E, 0xCE6D94AD);
+
 struct MyAGainAudioProcessorVtbl
 {
 	Steinberg_Vst_IComponentVtbl component;
@@ -31,8 +37,8 @@ typedef struct
 
 struct MyAGainEditControllerVtbl
 {
-	Steinberg_Vst_IConnectionPointVtbl connectionPoint;
 	Steinberg_Vst_IEditControllerVtbl editController;
+	Steinberg_Vst_IConnectionPointVtbl connectionPoint;
 	Steinberg_Vst_IEditController2Vtbl editController2;
 };
 
@@ -122,7 +128,8 @@ AGainProcessor_Notify (void* thisInterface, struct Steinberg_Vst_IMessage* messa
 Steinberg_tresult SMTG_STDMETHODCALLTYPE
 AGainProcessor_GetControllerClassId (void* thisInterface, Steinberg_TUID classId)
 {
-	return Steinberg_kNotImplemented;
+	memcpy (classId, editControllerUID, sizeof (Steinberg_TUID));
+	return Steinberg_kResultTrue;
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetIoMode (void* thisInterface,
@@ -411,8 +418,6 @@ static const struct MyAGainAudioProcessorVtbl myAGainAudioProcessorVtbl = {
 
 static const struct MyAGainEditControllerVtbl myAGainEditControllerVtbl = {
     {AGainController_QueryInterface, AGainController_AddRef, AGainController_Release,
-     AGainController_Connect, AGainController_Disconnect, AGainController_Notify},
-    {AGainController_QueryInterface, AGainController_AddRef, AGainController_Release,
      AGainController_Initialize, AGainController_Terminate, AGainController_SetComponentState,
      AGainController_SetState, AGainController_GetState, AGainController_GetParameterCount,
      AGainController_GetParameterInfo, AGainController_GetParamStringByValue,
@@ -420,6 +425,8 @@ static const struct MyAGainEditControllerVtbl myAGainEditControllerVtbl = {
      AGainController_PlainParamToNormalized, AGainController_GetParamNormalized,
      AGainController_SetParamNormalized, AGainController_SetComponentHandler,
      AGainController_CreateView},
+    {AGainController_QueryInterface, AGainController_AddRef, AGainController_Release,
+     AGainController_Connect, AGainController_Disconnect, AGainController_Notify},
     {AGainController_QueryInterface, AGainController_AddRef, AGainController_Release,
      AGainController_SetKnobMode, AGainController_OpenHelp, AGainController_PpenAboutBox}};
 
@@ -538,8 +545,6 @@ static Steinberg_IPluginFactory2 myPluginFactory = {&myPluginFactoryVtbl};
 
 SMTG_EXPORT_SYMBOL Steinberg_IPluginFactory* SMTG_STDMETHODCALLTYPE GetPluginFactory ()
 {
-	static const Steinberg_TUID audioProcessorUID =
-	    SMTG_INLINE_UID (0xD87D8E9C, 0xE4514B02, 0xB9FCF354, 0xFAC9219C);
 	memcpy (classes[0].cid, audioProcessorUID, sizeof (Steinberg_TUID));
 	classes[0].cardinality = Steinberg_PClassInfo_ClassCardinality_kManyInstances;
 	strcpy (classes[0].category, "Audio Module Class");
@@ -551,8 +556,6 @@ SMTG_EXPORT_SYMBOL Steinberg_IPluginFactory* SMTG_STDMETHODCALLTYPE GetPluginFac
 	classes[0].version[0] = 0;
 	classes[0].sdkVersion[0] = 0;
 
-	static const Steinberg_TUID editControllerUID =
-	    SMTG_INLINE_UID (0xBACB8EB9, 0xAFAD4C09, 0x90D5893E, 0xCE6D94AD);
 	memcpy (classes[1].cid, editControllerUID, sizeof (Steinberg_TUID));
 	classes[1].cardinality = Steinberg_PClassInfo_ClassCardinality_kManyInstances;
 	strcpy (classes[1].category, "Component Controller Class");
