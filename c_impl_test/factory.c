@@ -8,7 +8,6 @@ int compare_iid(const Steinberg_TUID id1, const Steinberg_TUID id2) {
 }
 
 struct MyAGainAudioProcessorVtbl {
-	Steinberg_IPluginBaseVtbl pluginBase;
 	Steinberg_Vst_IConnectionPointVtbl connectionPoint;
 	Steinberg_Vst_IComponentVtbl component;
 	Steinberg_Vst_IAudioProcessorVtbl audioProcessor;
@@ -241,12 +240,6 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_PpenAboutBox (void* thi
 
 
 static const struct MyAGainAudioProcessorVtbl myAGainAudioProcessorVtbl = {
-	{AGainProcessor_QueryInterface,
-	AGainProcessor_AddRef,
-	AGainProcessor_Release,
-	AGainProcessor_Initialize,
-	AGainProcessor_Terminate
-	},
 	{AGainProcessor_QueryInterface,
 	AGainProcessor_AddRef,
 	AGainProcessor_Release,
