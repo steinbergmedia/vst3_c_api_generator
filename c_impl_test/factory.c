@@ -406,7 +406,13 @@ static const Steinberg_IPluginFactory2Vtbl myPluginFactoryVtbl = {
 
 static Steinberg_IPluginFactory2 myPluginFactory = { &myPluginFactoryVtbl };
 
-__declspec (dllexport) Steinberg_IPluginFactory* SMTG_STDMETHODCALLTYPE GetPluginFactory(){
+#if __APPLE__
+#define SMTG_EXPORT_SYMBOL __attribute__ ((visibility ("default")))
+#else
+#define SMTG_EXPORT_SYMBOL __declspec (dllexport)
+#endif
+
+SMTG_EXPORT_SYMBOL Steinberg_IPluginFactory* SMTG_STDMETHODCALLTYPE GetPluginFactory(){
 	static const Steinberg_TUID audioProcessorUID = SMTG_INLINE_UID(0x84E8DE5F, 0x92554F53, 0x96FAE413, 0x3C935A18);
 	memcpy(classes[0].cid, audioProcessorUID, sizeof(Steinberg_TUID));
 	classes[0].cardinality = Steinberg_PClassInfo_ClassCardinality_kManyInstances;
@@ -433,3 +439,9 @@ __declspec (dllexport) Steinberg_IPluginFactory* SMTG_STDMETHODCALLTYPE GetPlugi
 
 	return &myPluginFactory;
 }
+
+#if __APPLE__
+SMTG_EXPORT_SYMBOL Steinberg_TBool bundleEntry(void* bundleRef) { return 1; }
+SMTG_EXPORT_SYMBOL Steinberg_TBool bundleExit(void* bundleRef) { return 1; }
+#endif
+
