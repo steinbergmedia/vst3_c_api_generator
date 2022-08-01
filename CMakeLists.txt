@@ -43,7 +43,17 @@ add_custom_command(TARGET GeneratorTest
                     )
 
 add_library(impl_test MODULE
-            c_impl_test/factory.c
+    c_impl_test/factory.c
 )
-target_include_directories(impl_test PRIVATE ${CMAKE_BINARY_DIR}
+
+target_include_directories(impl_test 
+    PRIVATE ${CMAKE_BINARY_DIR}
 )
+
+if(APPLE)
+	set_target_properties(impl_test
+		PROPERTIES
+			BUNDLE TRUE
+			XCODE_ATTRIBUTE_WRAPPER_EXTENSION vst3
+	)
+endif()
