@@ -109,6 +109,12 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface (void* th
 		*obj = instance;
 		return Steinberg_kResultTrue;
 	}
+	if (compare_iid (Steinberg_IPluginBase_iid, iid))
+	{
+		AGainProcessor_AddRef (thisInterface);
+		*obj = instance;
+		return Steinberg_kResultTrue;
+	}
 	if (compare_iid (Steinberg_Vst_IComponent_iid, iid))
 	{
 		AGainProcessor_AddRef (thisInterface);
@@ -312,6 +318,12 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface (void* t
 {
 	MyAGainEditController* instance = (MyAGainEditController*)thisInterface;
 	if (compare_iid (Steinberg_FUnknown_iid, iid))
+	{
+		AGainController_AddRef (thisInterface);
+		*obj = instance;
+		return Steinberg_kResultTrue;
+	}
+	if (compare_iid (Steinberg_IPluginBase_iid, iid))
 	{
 		AGainController_AddRef (thisInterface);
 		*obj = instance;
