@@ -56,4 +56,8 @@ if(APPLE)
 			BUNDLE TRUE
 			XCODE_ATTRIBUTE_WRAPPER_EXTENSION vst3
 	)
+else()
+    set_target_properties(impl_test
+        PROPERTIES
+            SUFFIX ".vst3")
 endif()
