@@ -160,6 +160,25 @@ def parse_variables(cursor):
     variable_name.append(convert_cursor(cursor))
     variable_value.append(_visit_children(list(cursor.get_children())[-1]))
 
+
+# ----- parse union ---------------------------------------------------------------
+
+def parse_union(parent, cursor):
+    if is_not_kind(cursor, 'UNION_DECL') or cursor.spelling in blacklist:
+        return
+    children = list(cursor.get_children())
+    if not children:
+        # this is only a forward declaration
+        return
+    union_parent.append(parent)
+    union_content.append([])
+    union_return.append([])
+    for cursor_child in children:
+        if is_kind(cursor_child, 'FIELD_DECL'):
+            union_content[-1].append(convert_cursor(cursor_child))
+            union_return[-1].append(convert_type(cursor_child.type))
+
+
 # ----- parse structs ---------------------------------------------------------------
 
 
@@ -173,6 +192,7 @@ def parse_structs(cursor):
         return
     fields = []
     for cursor_child in children:
+        parse_union(convert_cursor(cursor), cursor_child)
         if parse_enum(cursor_child) or is_not_kind(cursor_child, 'FIELD_DECL'):
             continue
         cursor_child_type = cursor_child.type
@@ -376,6 +396,18 @@ def get_converted_namespaces(source):
     return source.split("_")[:-1]
 
 
+def generate_union(parent):
+    string = ""
+    if parent in union_parent:
+        position = union_parent.index(parent)
+        string += "    union {\n"
+        for i in range(len(union_content[position])):
+            string += "    " + union_return[position][i] + " "
+            string += union_content[position][i] + ";\n"
+        string += "    };\n"
+    return string
+
+
 def generate_structs():
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
@@ -389,6 +421,7 @@ def generate_structs():
         string += "struct {} {}\n".format(struct_table[i], "{")
         for j in range(len(struct_content[i])):
             string += "    {}\n".format(struct_content[i][j])
+        string += generate_union(struct_table[i])
         string += "};\n"
         string += "\n"
     string += "\n"
@@ -652,6 +685,10 @@ includes_list = []
 method_name = []
 method_return = []
 method_args = []
+
+union_return = []
+union_parent = []
+union_content = []
 
 struct_table = []
 struct_content = []
