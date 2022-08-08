@@ -9,6 +9,7 @@
 #include <stdint.h>
 typedef int32_t Vst_ParamID;
 
+#include "math.h"
 #include "memory.h"
 #include "stdlib.h"
 #include "string.h"
