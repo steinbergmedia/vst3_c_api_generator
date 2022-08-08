@@ -402,7 +402,10 @@ def generate_union(parent):
         position = union_parent.index(parent)
         string += "    union {\n"
         for i in range(len(union_content[position])):
-            string += "    " + union_return[position][i] + " "
+            if union_return[position][i] in struct_table:
+                string += "        struct " + union_return[position][i] + " "
+            else:
+                string += "        " + union_return[position][i] + " "
             string += union_content[position][i] + ";\n"
         string += "    };\n"
     return string
