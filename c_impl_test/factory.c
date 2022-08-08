@@ -101,8 +101,9 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_ReleaseAudioProcessor (vo
 	return AGainProcessor_Release ((int64_t)thisInterface - 16);
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface (
-	void* thisInterface, const Steinberg_TUID iid, void** obj)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface (void* thisInterface,
+                                                                        const Steinberg_TUID iid,
+                                                                        void** obj)
 {
 	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)thisInterface;
 	if (compare_iid (Steinberg_FUnknown_iid, iid))
@@ -150,8 +151,8 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterfaceAudioProce
 	return AGainProcessor_QueryInterface ((int64_t)thisInterface - 16, iid, obj);
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Initialize (
-	void* thisInterface, struct Steinberg_FUnknown* context)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainProcessor_Initialize (void* thisInterface, struct Steinberg_FUnknown* context)
 {
 	return Steinberg_kResultOk;
 }
@@ -161,8 +162,8 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Terminate (void* thisInt
 	return Steinberg_kResultOk;
 };
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Connect (
-	void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainProcessor_Connect (void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
 {
 	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)((int64_t)thisInterface - 8);
 	instance->connectionPoint = other;
@@ -177,29 +178,31 @@ AGainProcessor_Disconnect (void* thisInterface, struct Steinberg_Vst_IConnection
 	return Steinberg_kResultTrue;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Notify (
-	void* thisInterface, struct Steinberg_Vst_IMessage* message)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainProcessor_Notify (void* thisInterface, struct Steinberg_Vst_IMessage* message)
 {
 	return Steinberg_kResultOk;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_GetControllerClassId (
-	void* thisInterface, Steinberg_TUID classId)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainProcessor_GetControllerClassId (void* thisInterface, Steinberg_TUID classId)
 {
 	memcpy (classId, editControllerUID, sizeof (Steinberg_TUID));
 	return Steinberg_kResultTrue;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetIoMode (
-	void* thisInterface, Steinberg_Vst_IoMode mode)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetIoMode (void* thisInterface,
+                                                                   Steinberg_Vst_IoMode mode)
 {
 	return Steinberg_kResultOk;
 };
 
-Steinberg_int32 SMTG_STDMETHODCALLTYPE AGainProcessor_GetBusCount (
-	void* thisInterface, Steinberg_Vst_MediaType type, Steinberg_Vst_BusDirection dir)
+Steinberg_int32 SMTG_STDMETHODCALLTYPE AGainProcessor_GetBusCount (void* thisInterface,
+                                                                   Steinberg_Vst_MediaType type,
+                                                                   Steinberg_Vst_BusDirection dir)
 {
-	if (type == Steinberg_Vst_MediaTypes_kAudio) {
+	if (type == Steinberg_Vst_MediaTypes_kAudio)
+	{
 		return 1;
 	}
 	return 0;
@@ -209,11 +212,12 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_GetBusInfo (
     void* thisInterface, Steinberg_Vst_MediaType type, Steinberg_Vst_BusDirection dir,
     Steinberg_int32 index, struct Steinberg_Vst_BusInfo* bus)
 {
-	if (type == Steinberg_Vst_MediaTypes_kEvent) {
+	if (type == Steinberg_Vst_MediaTypes_kEvent)
+	{
 		return Steinberg_kResultFalse;
 	}
-	static const Steinberg_char16 name_string[] = { 'b', 'u', 's' };
-	memcpy(bus->name, name_string, sizeof(name_string));
+	static const Steinberg_char16 name_string[] = {'b', 'u', 's'};
+	memcpy (bus->name, name_string, sizeof (name_string));
 	bus->channelCount = 2;
 	bus->flags = Steinberg_Vst_BusInfo_BusFlags_kDefaultActive;
 	bus->direction = dir;
@@ -222,37 +226,40 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_GetBusInfo (
 	return Steinberg_kResultTrue;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_GetRoutingInfo (
-	void* thisInterface, struct Steinberg_Vst_RoutingInfo* inInfo,
-	struct Steinberg_Vst_RoutingInfo* outInfo)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainProcessor_GetRoutingInfo (void* thisInterface, struct Steinberg_Vst_RoutingInfo* inInfo,
+                               struct Steinberg_Vst_RoutingInfo* outInfo)
 {
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_ActivateBus (
-	void* thisInterface, Steinberg_Vst_MediaType type, Steinberg_Vst_BusDirection dir,
-	Steinberg_int32 index, Steinberg_TBool state)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_ActivateBus (void* thisInterface,
+                                                                     Steinberg_Vst_MediaType type,
+                                                                     Steinberg_Vst_BusDirection dir,
+                                                                     Steinberg_int32 index,
+                                                                     Steinberg_TBool state)
 {
-	if (type == Steinberg_Vst_MediaTypes_kEvent) {
+	if (type == Steinberg_Vst_MediaTypes_kEvent)
+	{
 		return Steinberg_kResultFalse;
 	}
 	return Steinberg_kResultTrue;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetActive (
-	void* thisInterface, Steinberg_TBool state)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetActive (void* thisInterface,
+                                                                   Steinberg_TBool state)
 {
 	return Steinberg_kResultTrue;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetState (
-	void* thisInterface, struct Steinberg_IBStream* state)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetState (void* thisInterface,
+                                                                  struct Steinberg_IBStream* state)
 {
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_GetState (
-	void* thisInterface, struct Steinberg_IBStream* state)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_GetState (void* thisInterface,
+                                                                  struct Steinberg_IBStream* state)
 {
 	return Steinberg_kNotImplemented;
 }
@@ -261,30 +268,35 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetBusArrangements (
     void* thisInterface, Steinberg_Vst_SpeakerArrangement* inputs, Steinberg_int32 numIns,
     Steinberg_Vst_SpeakerArrangement* outputs, Steinberg_int32 numOuts)
 {
-	if (numIns != numOuts || numIns != 1) {
+	if (numIns != numOuts || numIns != 1)
+	{
 		return Steinberg_kResultFalse;
 	}
-	if (inputs[0] != outputs[0] || inputs[0] != Steinberg_Vst_SpeakerArr_kStereo) {
+	if (inputs[0] != outputs[0] || inputs[0] != Steinberg_Vst_SpeakerArr_kStereo)
+	{
 		return Steinberg_kResultFalse;
 	}
 	return Steinberg_kResultTrue;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_GetBusArrangement (
-	void* thisInterface, Steinberg_Vst_BusDirection dir,
-	Steinberg_int32 index, Steinberg_Vst_SpeakerArrangement* arr)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainProcessor_GetBusArrangement (void* thisInterface, Steinberg_Vst_BusDirection dir,
+                                  Steinberg_int32 index, Steinberg_Vst_SpeakerArrangement* arr)
 {
-	if (index != 0) {
+	if (index != 0)
+	{
 		return Steinberg_kInvalidArgument;
 	}
 	*arr = Steinberg_Vst_SpeakerArr_kStereo;
 	return Steinberg_kResultTrue;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_CanProcessSampleSize (
-	void* thisInterface, Steinberg_int32 symbolicSampleSize)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainProcessor_CanProcessSampleSize (void* thisInterface, Steinberg_int32 symbolicSampleSize)
 {
-	return symbolicSampleSize == Steinberg_Vst_SymbolicSampleSizes_kSample32 ? Steinberg_kResultTrue : Steinberg_kResultFalse;
+	return symbolicSampleSize == Steinberg_Vst_SymbolicSampleSizes_kSample32 ?
+	           Steinberg_kResultTrue :
+	           Steinberg_kResultFalse;
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_GetLatencySamples (void* thisInterface)
@@ -292,52 +304,64 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_GetLatencySamples (void* 
 	return 0;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetupProcessing (
-	void* thisInterface, struct Steinberg_Vst_ProcessSetup* setup)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainProcessor_SetupProcessing (void* thisInterface, struct Steinberg_Vst_ProcessSetup* setup)
 {
 	return Steinberg_kResultTrue;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetProcessing (
-	void* thisInterface, Steinberg_TBool state)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_SetProcessing (void* thisInterface,
+                                                                       Steinberg_TBool state)
 {
 	return Steinberg_kResultTrue;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Process (
-	void* thisInterface, struct Steinberg_Vst_ProcessData* data)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainProcessor_Process (void* thisInterface, struct Steinberg_Vst_ProcessData* data)
 {
 	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)((int64_t)thisInterface - 16);
 	Steinberg_Vst_IParameterChanges* paramChanges = data->inputParameterChanges;
-	if (paramChanges) {
-		Steinberg_int32 numParamsChanged = paramChanges->lpVtbl->getParameterCount(paramChanges);
+	if (paramChanges)
+	{
+		Steinberg_int32 numParamsChanged = paramChanges->lpVtbl->getParameterCount (paramChanges);
 
 		for (Steinberg_int32 i = 0; i < numParamsChanged; i++)
 		{
-			Steinberg_Vst_IParamValueQueue* paramQueue = paramChanges->lpVtbl->getParameterData(paramChanges, i);
+			Steinberg_Vst_IParamValueQueue* paramQueue =
+			    paramChanges->lpVtbl->getParameterData (paramChanges, i);
 			if (paramQueue)
 			{
 				Steinberg_Vst_ParamValue value;
 				Steinberg_int32 sampleOffset;
-				Steinberg_int32 numPoints = paramQueue->lpVtbl->getPointCount(paramQueue);
-				if (numPoints > 0 && paramQueue->lpVtbl->getPoint(paramQueue, numPoints - 1, &sampleOffset, &value) == Steinberg_kResultTrue) {
+				Steinberg_int32 numPoints = paramQueue->lpVtbl->getPointCount (paramQueue);
+				if (numPoints > 0 &&
+				    paramQueue->lpVtbl->getPoint (paramQueue, numPoints - 1, &sampleOffset,
+				                                  &value) == Steinberg_kResultTrue)
+				{
 
 					instance->fGain = (float)value;
 				}
 			}
 		}
 	}
-	if (!data || data->numSamples == 0 || data->inputs == 0 || data->outputs == 0) {
+	if (!data || data->numSamples == 0 || data->inputs == 0 || data->outputs == 0)
+	{
 		return Steinberg_kResultTrue;
 	}
 	float fGain2 = 2.f * instance->fGain;
-	for (int channel_index = 0; channel_index < data->inputs[0].numChannels; channel_index++) {
-		for (int sample_index = 0; sample_index < data->numSamples; sample_index++) {
-			float sampleInput = data->inputs[0].Steinberg_Vst_AudioBusBuffers_channelBuffers32[channel_index][sample_index];
-			data->outputs[0].Steinberg_Vst_AudioBusBuffers_channelBuffers32[channel_index][sample_index] = sampleInput * fGain2;
+	for (int channel_index = 0; channel_index < data->inputs[0].numChannels; channel_index++)
+	{
+		for (int sample_index = 0; sample_index < data->numSamples; sample_index++)
+		{
+			float sampleInput =
+			    data->inputs[0]
+			        .Steinberg_Vst_AudioBusBuffers_channelBuffers32[channel_index][sample_index];
+			data->outputs[0]
+			    .Steinberg_Vst_AudioBusBuffers_channelBuffers32[channel_index][sample_index] =
+			    sampleInput * fGain2;
 		}
 	}
-	
+
 	return Steinberg_kResultTrue;
 }
 
@@ -356,14 +380,14 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_AddRef (void* thisInterf
 	return instance->refCount;
 }
 
-Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_AddRefConnectionPoint(void* thisInterface)
+Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_AddRefConnectionPoint (void* thisInterface)
 {
-	return AGainController_AddRef((int64_t)thisInterface - 8);
+	return AGainController_AddRef ((int64_t)thisInterface - 8);
 }
 
-Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_AddRefEditController2(void* thisInterface)
+Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_AddRefEditController2 (void* thisInterface)
 {
-	return AGainController_AddRef((int64_t)thisInterface - 16);
+	return AGainController_AddRef ((int64_t)thisInterface - 16);
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_Release (void* thisInterface)
@@ -378,18 +402,19 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_Release (void* thisInter
 	return instance->refCount;
 }
 
-Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_ReleaseConnectionPoint(void* thisInterface)
+Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_ReleaseConnectionPoint (void* thisInterface)
 {
-	return AGainController_Release((int64_t)thisInterface - 8);
+	return AGainController_Release ((int64_t)thisInterface - 8);
 }
 
-Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_ReleaseEditController2(void* thisInterface)
+Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_ReleaseEditController2 (void* thisInterface)
 {
-	return AGainController_Release((int64_t)thisInterface - 16);
+	return AGainController_Release ((int64_t)thisInterface - 16);
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface (
-	void* thisInterface, const Steinberg_TUID iid, void** obj)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface (void* thisInterface,
+                                                                         const Steinberg_TUID iid,
+                                                                         void** obj)
 {
 	MyAGainEditController* instance = (MyAGainEditController*)thisInterface;
 	if (compare_iid (Steinberg_FUnknown_iid, iid))
@@ -425,8 +450,8 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface (
 	return Steinberg_kNoInterface;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_Initialize (
-	void* thisInterface, struct Steinberg_FUnknown* context)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainController_Initialize (void* thisInterface, struct Steinberg_FUnknown* context)
 {
 	return Steinberg_kResultTrue;
 }
@@ -436,38 +461,38 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_Terminate (void* thisIn
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_Connect (
-	void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainController_Connect (void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
 {
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_Disconnect (
-	void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainController_Disconnect (void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
 {
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_Notify (
-	void* thisInterface, struct Steinberg_Vst_IMessage* message)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainController_Notify (void* thisInterface, struct Steinberg_Vst_IMessage* message)
 {
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_SetComponentState (
-	void* thisInterface, struct Steinberg_IBStream* state)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE
+AGainController_SetComponentState (void* thisInterface, struct Steinberg_IBStream* state)
 {
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_SetState (
-	void* thisInterface, struct Steinberg_IBStream* state)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_SetState (void* thisInterface,
+                                                                   struct Steinberg_IBStream* state)
 {
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_GetState (
-	void* thisInterface, struct Steinberg_IBStream* state)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_GetState (void* thisInterface,
+                                                                   struct Steinberg_IBStream* state)
 {
 	return Steinberg_kNotImplemented;
 }
@@ -486,10 +511,10 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_GetParameterInfo (
 	info->flags = Steinberg_Vst_ParameterInfo_ParameterFlags_kCanAutomate;
 	info->defaultNormalizedValue = 0.5f;
 	info->unitId = Steinberg_Vst_kRootUnitId;
-	static const Steinberg_char16 title_string[] = { 'G', 'a', 'i', 'n' };
-	memcpy(info->title, title_string, sizeof(title_string));
-	static const Steinberg_char16 units_string[] = { 'd', 'B' };
-	memcpy(info->units, units_string, sizeof(units_string));
+	static const Steinberg_char16 title_string[] = {'G', 'a', 'i', 'n'};
+	memcpy (info->title, title_string, sizeof (title_string));
+	static const Steinberg_char16 units_string[] = {'d', 'B'};
+	memcpy (info->units, units_string, sizeof (units_string));
 
 	return Steinberg_kResultTrue;
 }
@@ -511,17 +536,17 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_GetParamValueByString (
 Steinberg_Vst_ParamValue SMTG_STDMETHODCALLTYPE AGainController_NormalizedParamToPlain (
     void* thisInterface, Steinberg_Vst_ParamID id, Steinberg_Vst_ParamValue valueNormalized)
 {
-	return 6.02061f + 20 * log10f((float)valueNormalized);
+	return 6.02061f + 20 * log10f ((float)valueNormalized);
 }
 
 Steinberg_Vst_ParamValue SMTG_STDMETHODCALLTYPE AGainController_PlainParamToNormalized (
     void* thisInterface, Steinberg_Vst_ParamID id, Steinberg_Vst_ParamValue plainValue)
 {
-	return expf(logf(10.f) * ((float)plainValue - 6.02061f) / 20.f);
+	return expf (logf (10.f) * ((float)plainValue - 6.02061f) / 20.f);
 }
 
-Steinberg_Vst_ParamValue SMTG_STDMETHODCALLTYPE AGainController_GetParamNormalized (
-	void* thisInterface, Steinberg_Vst_ParamID id)
+Steinberg_Vst_ParamValue SMTG_STDMETHODCALLTYPE
+AGainController_GetParamNormalized (void* thisInterface, Steinberg_Vst_ParamID id)
 {
 	MyAGainEditController* instance = (MyAGainEditController*)thisInterface;
 	return instance->gainParam;
@@ -541,26 +566,26 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_SetComponentHandler (
 	return Steinberg_kNotImplemented;
 }
 
-struct Steinberg_IPlugView* SMTG_STDMETHODCALLTYPE AGainController_CreateView (
-	void* thisInterface, Steinberg_FIDString name)
+struct Steinberg_IPlugView* SMTG_STDMETHODCALLTYPE
+AGainController_CreateView (void* thisInterface, Steinberg_FIDString name)
 {
 	return NULL;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_SetKnobMode (
-	void* thisInterface, Steinberg_Vst_KnobMode mode)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_SetKnobMode (void* thisInterface,
+                                                                      Steinberg_Vst_KnobMode mode)
 {
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_OpenHelp (
-	void* thisInterface, Steinberg_TBool onlyCheck)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_OpenHelp (void* thisInterface,
+                                                                   Steinberg_TBool onlyCheck)
 {
 	return Steinberg_kNotImplemented;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_PpenAboutBox (
-	void* thisInterface, Steinberg_TBool onlyCheck)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_PpenAboutBox (void* thisInterface,
+                                                                       Steinberg_TBool onlyCheck)
 {
 	return Steinberg_kNotImplemented;
 }
@@ -590,10 +615,12 @@ static const struct MyAGainEditControllerVtbl myAGainEditControllerVtbl = {
      AGainController_PlainParamToNormalized, AGainController_GetParamNormalized,
      AGainController_SetParamNormalized, AGainController_SetComponentHandler,
      AGainController_CreateView},
-    {AGainController_QueryInterface, AGainController_AddRefConnectionPoint, AGainController_ReleaseConnectionPoint,
-     AGainController_Connect, AGainController_Disconnect, AGainController_Notify},
-    {AGainController_QueryInterface, AGainController_AddRefEditController2, AGainController_ReleaseEditController2,
-     AGainController_SetKnobMode, AGainController_OpenHelp, AGainController_PpenAboutBox}};
+    {AGainController_QueryInterface, AGainController_AddRefConnectionPoint,
+     AGainController_ReleaseConnectionPoint, AGainController_Connect, AGainController_Disconnect,
+     AGainController_Notify},
+    {AGainController_QueryInterface, AGainController_AddRefEditController2,
+     AGainController_ReleaseEditController2, AGainController_SetKnobMode, AGainController_OpenHelp,
+     AGainController_PpenAboutBox}};
 
 /* methods derived from "Steinberg_FUnknown": */
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE myAddRef (void* thisInterface)
@@ -606,8 +633,8 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE myRelease (void* thisInterface)
 	return 100;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE myQueryInterface (
-	void* thisInterface, const Steinberg_TUID iid, void** obj)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE myQueryInterface (void* thisInterface,
+                                                           const Steinberg_TUID iid, void** obj)
 {
 	if (compare_iid (iid, Steinberg_FUnknown_iid))
 	{
@@ -631,8 +658,8 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE myQueryInterface (
 }
 
 /* methods derived from "Steinberg_IPluginFactory": */
-Steinberg_tresult SMTG_STDMETHODCALLTYPE myGetFactoryInfo (
-	void* thisInterface, struct Steinberg_PFactoryInfo* info)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE myGetFactoryInfo (void* thisInterface,
+                                                           struct Steinberg_PFactoryInfo* info)
 {
 	if (info == 0)
 	{
@@ -652,16 +679,15 @@ Steinberg_int32 SMTG_STDMETHODCALLTYPE myCountClasses (void* thisInterface)
 
 static struct Steinberg_PClassInfo2 classes[2];
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE myGetClassInfo (
-	void* thisInterface, Steinberg_int32 index,
-	struct Steinberg_PClassInfo* info)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE myGetClassInfo (void* thisInterface, Steinberg_int32 index,
+                                                         struct Steinberg_PClassInfo* info)
 {
 	return Steinberg_kResultOk;
 }
 
-Steinberg_tresult SMTG_STDMETHODCALLTYPE myCreateInstance (
-	void* thisInterface, Steinberg_FIDString cid,
-	Steinberg_FIDString iid, void** obj)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE myCreateInstance (void* thisInterface,
+                                                           Steinberg_FIDString cid,
+                                                           Steinberg_FIDString iid, void** obj)
 {
 	if (compare_iid (Steinberg_Vst_IComponent_iid, iid) && compare_iid (cid, classes[0].cid))
 	{
@@ -692,8 +718,9 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE myCreateInstance (
 }
 
 /* methods defined in "Steinberg_IPluginFactory2": */
-Steinberg_tresult SMTG_STDMETHODCALLTYPE myGetClassInfo2 (
-	void* thisInterface, Steinberg_int32 index, struct Steinberg_PClassInfo2* info)
+Steinberg_tresult SMTG_STDMETHODCALLTYPE myGetClassInfo2 (void* thisInterface,
+                                                          Steinberg_int32 index,
+                                                          struct Steinberg_PClassInfo2* info)
 {
 	if (index > 1 || info == 0)
 	{
@@ -753,12 +780,12 @@ SMTG_EXPORT_SYMBOL Steinberg_TBool bundleExit (void* bundleRef)
 }
 #else
 
-SMTG_EXPORT_SYMBOL Steinberg_TBool InitDll()
+SMTG_EXPORT_SYMBOL Steinberg_TBool InitDll ()
 {
 	return 1;
 }
 
-SMTG_EXPORT_SYMBOL Steinberg_TBool ExitDll()
+SMTG_EXPORT_SYMBOL Steinberg_TBool ExitDll ()
 {
 	return 1;
 }
