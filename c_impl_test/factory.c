@@ -164,7 +164,7 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Terminate (void* thisInt
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Connect (
 	void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
 {
-	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)(int64_t)thisInterface - 8;
+	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)((int64_t)thisInterface - 8);
 	instance->connectionPoint = other;
 	return Steinberg_kResultTrue;
 }
@@ -172,7 +172,7 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_Connect (
 Steinberg_tresult SMTG_STDMETHODCALLTYPE
 AGainProcessor_Disconnect (void* thisInterface, struct Steinberg_Vst_IConnectionPoint* other)
 {
-	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)(int64_t)thisInterface - 8;
+	MyAGainAudioProcessor* instance = (MyAGainAudioProcessor*)((int64_t)thisInterface - 8);
 	instance->connectionPoint = NULL;
 	return Steinberg_kResultTrue;
 }
