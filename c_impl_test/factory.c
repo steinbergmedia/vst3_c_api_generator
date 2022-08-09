@@ -136,6 +136,7 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface (void* th
 		*obj = (void*)((int64_t)instance + 16);
 		return Steinberg_kResultTrue;
 	}
+	*obj = NULL;
 	return Steinberg_kResultFalse;
 }
 
@@ -447,6 +448,7 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface (void* t
 		*obj = (void*)((int64_t)instance + 16);
 		return Steinberg_kResultTrue;
 	}
+	*obj = NULL;
 	return Steinberg_kNoInterface;
 }
 
@@ -654,6 +656,7 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE myQueryInterface (void* thisInterface,
 		*obj = thisInterface;
 		return Steinberg_kResultTrue;
 	}
+	*obj = NULL;
 	return Steinberg_kNoInterface;
 }
 
@@ -689,30 +692,29 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE myCreateInstance (void* thisInterface,
                                                            Steinberg_FIDString cid,
                                                            Steinberg_FIDString iid, void** obj)
 {
-	if (compare_iid (Steinberg_Vst_IComponent_iid, iid) && compare_iid (cid, classes[0].cid))
+	if (compare_iid (cid, classes[0].cid))
 	{
 		MyAGainAudioProcessor* instance =
 		    (MyAGainAudioProcessor*)malloc (sizeof (MyAGainAudioProcessor));
 		instance->componentVtbl = &myAGainAudioProcessorVtbl.component;
 		instance->connectionPointVtbl = &myAGainAudioProcessorVtbl.connectionPoint;
 		instance->audioProcessorVtbl = &myAGainAudioProcessorVtbl.audioProcessor;
-		instance->refCount = 1;
+		instance->refCount = 0;
 		instance->connectionPoint = NULL;
 		instance->fGain = 0.5f;
-		*obj = instance;
-		return Steinberg_kResultTrue;
+		return instance->componentVtbl->queryInterface (instance, iid, obj);
 	}
-	if (compare_iid (Steinberg_Vst_IEditController_iid, iid) && compare_iid (cid, classes[1].cid))
+	if (compare_iid (cid, classes[1].cid))
 	{
 		MyAGainEditController* instance =
 		    (MyAGainEditController*)malloc (sizeof (MyAGainEditController));
 		instance->editControllerVtbl = &myAGainEditControllerVtbl.editController;
 		instance->connectionPointVtbl = &myAGainEditControllerVtbl.connectionPoint;
 		instance->editController2Vtbl = &myAGainEditControllerVtbl.editController2;
-		instance->refCount = 1;
+		instance->refCount = 0;
 		instance->gainParam = 0.5f;
 		*obj = instance;
-		return Steinberg_kResultTrue;
+		return instance->editControllerVtbl->queryInterface (instance, iid, obj);
 	}
 	return Steinberg_kResultFalse;
 }
