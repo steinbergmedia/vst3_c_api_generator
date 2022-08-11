@@ -16,9 +16,14 @@ endif()
 
 find_package (Python3)
 
-project(GeneratorTest)
-add_executable(GeneratorTest main.c test2.c)
-target_include_directories(GeneratorTest PRIVATE ${CMAKE_BINARY_DIR})
+project(Convert_Interfaces_To_C)
+
+add_executable(Generate_Header Generate_Header.c)
+#add_executable(Generate_Header main.c test2.c)
+target_include_directories(Generate_Header PRIVATE ${CMAKE_BINARY_DIR})
+
+add_executable(Validate_Interfaces main.c test2.c)
+target_include_directories(Validate_Interfaces PRIVATE ${CMAKE_BINARY_DIR})
 
 set(venv_dir ${CMAKE_CURRENT_SOURCE_DIR}/build/venv)
 execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${venv_dir})
@@ -34,30 +39,32 @@ foreach(library libclang clang jinja2)
   execute_process(COMMAND ${venv_python_exe} -m pip install ${library})
 endforeach()
 
-add_custom_command(TARGET GeneratorTest
+add_custom_command(TARGET Generate_Header
                     PRE_BUILD
                     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
                     COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
                     COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}
                     COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
+                    POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
                     )
 
-add_library(impl_test MODULE
-    c_impl_test/factory.c
+add_library(C_Gain_Example MODULE
+    C_Gain_Example/factory.c
 )
 
-target_include_directories(impl_test 
+target_include_directories(C_Gain_Example
     PRIVATE ${CMAKE_BINARY_DIR}
 )
 
 if(APPLE)
-	set_target_properties(impl_test
+	set_target_properties(C_Gain_Example
 		PROPERTIES
 			BUNDLE TRUE
 			XCODE_ATTRIBUTE_WRAPPER_EXTENSION vst3
 	)
 else()
-    set_target_properties(impl_test
+    set_target_properties(C_Gain_Example
         PROPERTIES
             SUFFIX ".vst3")
 endif()

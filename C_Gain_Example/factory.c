@@ -525,6 +525,7 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_GetParamStringByValue (
     void* thisInterface, Steinberg_Vst_ParamID id, Steinberg_Vst_ParamValue valueNormalized,
     Steinberg_Vst_String128 string)
 {
+
 	return Steinberg_kNotImplemented;
 }
 
