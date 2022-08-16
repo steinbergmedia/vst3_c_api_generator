@@ -1,6 +1,6 @@
-""" Documentation """
-
-"""---------------------------------------------------------------------------------------------------------------------
+"""
+Documentation
+------------------------------------------------------------------------------------------------------------------------
 
 This script interprets C++-based COM header files and converts its main structures, that is interfaces,
 structs, unions, enums, typedefs and variable declarations into respective C-compatible variants.
@@ -29,7 +29,8 @@ To function properly, the script must be supplied with the original C++ header f
 working directory that houses all other files this header includes, as these will not be
 recognised otherwise.
 
----------------------------------------------------------------------------------------------------------------------"""
+------------------------------------------------------------------------------------------------------------------------
+"""
 
 
 # ----------------------------------------------------------------------------------------------------------------------
