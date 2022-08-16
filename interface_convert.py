@@ -1,37 +1,43 @@
-# Documentation
+""" Documentation """
+
+"""---------------------------------------------------------------------------------------------------------------------
+
+This script interprets C++-based COM header files and converts its main structures, that is interfaces,
+structs, unions, enums, typedefs and variable declarations into respective C-compatible variants.
+The results are assembled into a newly created header file which thus inherits the basic functionality
+of its original counterpart.
+
+This conversion is facilitated by the Libclang python bindings library which ports the main functions
+of the Clang compiler to python. Using this compiler, the translation unit of the original header file
+is established, an abstract syntax tree of nested cursor and token objects which represent the structure
+of the original file in an easily accessible way. These objects each contain data about their inherent
+characteristics which is selectively parsed and stored for later use when recreating the interfaces.
+
+The script is broken up into several smaller functions which can be sorted into tree main categories,
+parsing functions, utility functions and generation functions. Parsing functions interpret the incoming
+cursor objects and sort the relevant data into various arrays, aided by the utility functions which
+mainly serve to reduce bloat and increase human readability by packaging commonly occurring
+structures into short expressions. The generation functions access the previously stored data
+to assemble a new C-compatible header file.
+
+The data storage is based on the usage of often multidimensional arrays which each include specific
+information about all structures of a certain type in order of their appearance. To facilitate the
+unambiguous correlation of these pieces of data, the arrays are always kept in sync and later
+accessed using for-loops.
+
+To function properly, the script must be supplied with the original C++ header file, as well as a
+working directory that houses all other files this header includes, as these will not be
+recognised otherwise.
+
+---------------------------------------------------------------------------------------------------------------------"""
+
+
 # ----------------------------------------------------------------------------------------------------------------------
-#
-# This script interprets C++-based COM header files and converts its main structures, that is interfaces,
-# structs, unions, enums, typedefs and variable declarations into respective C-compatible variants.
-# The results are assembled into a newly created header file which thus inherits the basic functionality
-# of its original counterpart.
-#
-# This conversion is facilitated by the Libclang python bindings library which ports the main functions
-# of the Clang compiler to python. Using this compiler, the translation unit of the original header file
-# is established, an abstract syntax tree of nested cursor and token objects which represent the structure
-# of the original file in an easily accessible way. These objects each contain data about their inherent
-# characteristics which is selectively parsed and stored for later use when recreating the interfaces.
-#
-# The script is broken up into several smaller functions which can be sorted into tree main categories,
-# parsing functions, utility functions and generation functions. Parsing functions interpret the incoming
-# cursor objects and sort the relevant data into various arrays, aided by the utility functions which
-# mainly serve to reduce bloat and increase human readability by packaging commonly occurring
-# structures into short expressions. The generation functions access the previously stored data
-# to assemble a new C-compatible header file.
-#
-# The data storage is based on the usage of often multidimensional arrays which each include specific
-# information about all structures of a certain type in order of their appearance. To facilitate the
-# unambiguous correlation of these pieces of data, the arrays are always kept in sync and later
-# accessed using for-loops.
-#
-# To function properly, the script must be supplied with the original C++ header file, as well as a
-# working directory that houses all other files this header includes, as these will not be
-# recognised otherwise.
-#
+# ----- script begin ---------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-# library import statements
+"""library import statements"""
 import re
 import sys
 from optparse import OptionParser
