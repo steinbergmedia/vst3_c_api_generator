@@ -479,10 +479,6 @@ def generate_standard(source_file: str):
     string += "}\n"
     string += "#endif\n"
     string += "\n"
-    string += "/*----------------------------------------------------------------------------------------------------------------------\n"
-    string += "----- Typedefs ---------------------------------------------------------------------------------------------------------\n"
-    string += "----------------------------------------------------------------------------------------------------------------------*/\n"
-    string += "\n"
     string += generate_typedefs()
     string += "\n"
     string += "\n"
@@ -493,6 +489,10 @@ def generate_standard(source_file: str):
 # noinspection SpellCheckingInspection
 def generate_typedefs():
     string = ""
+    string += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    string += "----- Typedefs ---------------------------------------------------------------------------------------------------------\n"
+    string += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    string += "\n"
     for typedef in range(len(typedef_name)):
         if typedef_return[typedef]:
             if typedef_return[typedef] in struct_table or typedef_return[typedef] in interfaces\
