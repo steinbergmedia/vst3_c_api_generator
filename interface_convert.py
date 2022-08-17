@@ -36,7 +36,7 @@ recognised otherwise.
 # ----------------------------------------------------------------------------------------------------------------------
 # ----- script begin ---------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-
+from data_classes import Enum, Container
 
 """library import statements"""
 import re
@@ -293,18 +293,16 @@ def parse_union(parent, cursor):
 def parse_enum(cursor: Cursor) -> bool:
     if is_not_kind(cursor, 'ENUM_DECL'):
         return False
-    if cursor.spelling:
-        enum_name.append(convert_cursor(cursor))
-    else:
-        enum_name.append('')
-    enum_source.append(get_cursor_location(cursor.location))
-    enum_definitions = []
+    if not cursor.spelling:
+        return True
+    enum = Enum(convert_cursor(cursor), get_cursor_location(cursor.location))
     for cursor_child in cursor.get_children():
         if is_not_kind(cursor_child, 'ENUM_CONSTANT_DECL'):
             continue
-        enum_definitions.append(create_namespace_prefix(cursor_child) + cursor_child.spelling)
-        enum_definitions.append(_visit_children(cursor_child, use_definitions=False))
-    enum_table.append(enum_definitions)
+        enumerator_name = create_namespace_prefix(cursor_child) + cursor_child.spelling
+        enumerator_expression = _visit_children(cursor_child, use_definitions=False)
+        enum.add_enumerator(enumerator_name, enumerator_expression)
+    enums.append(enum)
     return True
 
 
@@ -510,7 +508,7 @@ def generate_typedefs():
     for typedef in range(len(typedef_name)):
         if typedef_return[typedef]:
             if typedef_return[typedef] in struct_table or typedef_return[typedef] in interface_name\
-                    or typedef_return[typedef] in enum_name:
+                    or typedef_return[typedef] in enums:
                 string += "typedef struct {} {};\n".format(typedef_return[typedef], typedef_name[typedef])
             else:
                 string += "typedef {} {};\n".format(typedef_return[typedef], typedef_name[typedef])
@@ -529,7 +527,7 @@ def generate_interface_typedefs():
         if typedef_return[interface_typedef]:
             if interface_typedef_return[interface_typedef] in struct_table\
                 or interface_typedef_return[interface_typedef] in interface_name\
-                    or interface_typedef_return[interface_typedef] in enum_name:
+                    or interface_typedef_return[interface_typedef] in enums:
                 string += "typedef struct {} {};\n".format(interface_typedef_return[interface_typedef],
                                                            interface_typedef_name[interface_typedef])
             else:
@@ -606,24 +604,15 @@ def generate_enums():
     string += "----- Enums ------------------------------------------------------------------------------------------------------------\n"
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
-    for enum in range(len(enum_table)):
-        if enum_name[enum] == "":
-            continue
+    for enum in enums:
         string += "/*----------------------------------------------------------------------------------------------------------------------\n"
-        string += "{} */\n".format(enum_source[enum])
+        string += "{} */\n".format(enum.source_location)
         string += "\n"
         string += "typedef enum\n"
         string += "{\n"
-        enum_count = int(len(enum_table[enum]) / 2)
-        for j in range(enum_count):
-            if enum_table[enum][2 * j + 1]:
-                string += "{} = {}".format(enum_table[enum][2 * j], enum_table[enum][2 * j + 1])
-            else:
-                string += "{}".format(enum_table[enum][2 * j])
-            if j < enum_count - 1:
-                string += ","
-            string += "\n"
-        string += "}} {};\n".format(enum_name[enum])
+        string += ",\n".join(enum.enumerators)
+        string += "\n"
+        string += "}} {};\n".format(enum.name)
         string += "\n"
     string += "\n"
     return string
@@ -764,10 +753,9 @@ def generate_conversion(source_file: str):
 """prints information about header file, not necessary for generation process"""
 # noinspection SpellCheckingInspection
 def print_info():
-    print("Number of enums: {}".format(len(enum_name)))
-    for i in range(len(enum_name)):
-        if enum_name[i] != "":
-            print(" {}".format(enum_name[i]))
+    print("Number of enums: {}".format(len(enums)))
+    for enum in enums:
+        print(" {}".format(enum.name))
     print()
     print("Number of structs: {}".format(len(struct_table)))
     for i in range(len(struct_table)):
@@ -811,9 +799,7 @@ struct_table = []
 struct_content = []
 struct_source = []
 
-enum_name = []
-enum_table = []
-enum_source = []
+enums = Container()
 
 typedef_name = []
 typedef_return = []
@@ -847,9 +833,7 @@ def clear_arrays():
     global struct_table
     global struct_content
     global struct_source
-    global enum_name
-    global enum_table
-    global enum_source
+    global enums
     global typedef_name
     global typedef_return
     global typedef_interface_name
@@ -880,9 +864,7 @@ def clear_arrays():
     struct_content = []
     struct_source = []
 
-    enum_name = []
-    enum_table = []
-    enum_source = []
+    enums.clear()
 
     typedef_name = []
     typedef_return = []
