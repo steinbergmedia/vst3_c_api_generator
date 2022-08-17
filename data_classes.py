@@ -10,18 +10,17 @@ class Container(list):
 
     def __getitem__(self, name_or_index: Union[str, int, slice]):
         if type(name_or_index) != str:
-            return super(Container, self).__getitem__(name_or_index)
+            return super().__getitem__(name_or_index)
         for element in self:
             if element.name == name_or_index:
                 return element
         return None
 
 
-class Enum:
-    def __init__(self, name: str, source_location: str):
+class Base:
+    def __init__(self, name: str = None, source_location: str = None):
         self._name = name
         self._source_location = source_location
-        self._enumerators = []
 
     @property
     def name(self) -> str:
@@ -30,6 +29,12 @@ class Enum:
     @property
     def source_location(self) -> str:
         return self._source_location
+
+
+class Enum(Base):
+    def __init__(self, name: str, source_location: str):
+        super().__init__(name, source_location)
+        self._enumerators = []
 
     @property
     def enumerators(self) -> List[str]:
@@ -42,22 +47,13 @@ class Enum:
         self._enumerators.append(enumerator)
 
 
-class Interface:
+class Interface(Base):
     def __init__(self, name: str, source_location: str, description: str):
-        self._name = name
-        self._source_location = source_location
+        super().__init__(name, source_location)
         self._description = description
         self._base_classes = []
         self._methods = []
         self._iid = None
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def source_location(self) -> str:
-        return self._source_location
 
     @property
     def description(self) -> str:
