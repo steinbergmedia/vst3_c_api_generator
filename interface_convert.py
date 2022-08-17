@@ -738,9 +738,6 @@ def print_info():
 
 """defines all used arrays"""
 interfaces = Container()
-inherits_table = []
-
-includes_list = []
 
 union_return = []
 union_parent = []
@@ -754,8 +751,6 @@ enums = Container()
 
 typedef_name = []
 typedef_return = []
-typedef_interface_name = []
-typedef_interface_return = []
 interface_typedef_return = []
 interface_typedef_name = []
 
@@ -769,8 +764,6 @@ blocklist = ["FUID", "FReleaser"]
 """clears all used arrays"""
 def clear_arrays():
     global interfaces
-    global inherits_table
-    global includes_list
     global union_return
     global union_parent
     global union_content
@@ -780,8 +773,6 @@ def clear_arrays():
     global enums
     global typedef_name
     global typedef_return
-    global typedef_interface_name
-    global typedef_interface_return
     global interface_typedef_return
     global interface_typedef_name
     global variable_return
@@ -789,9 +780,6 @@ def clear_arrays():
     global variable_value
 
     interfaces.clear()
-    inherits_table = []
-
-    includes_list = []
 
     union_return = []
     union_parent = []
@@ -805,8 +793,6 @@ def clear_arrays():
 
     typedef_name = []
     typedef_return = []
-    typedef_interface_name = []
-    typedef_interface_return = []
     interface_typedef_return = []
     interface_typedef_name = []
 
