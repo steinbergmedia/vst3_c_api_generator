@@ -27,7 +27,7 @@ class TestConversion(unittest.TestCase):
     @staticmethod
     def _get_section(start_comment: str, end_comment: str, header_content: str) -> str:
         if end_comment:
-            match = re.search(r'{}.*?\*/\s*(.*?)\s*/\*-+.{}'.format(start_comment, end_comment), header_content,
+            match = re.search(r'{}.*?\*/\s*(.*?)\s*/\*-+\s-+.-+.{}'.format(start_comment, end_comment), header_content,
                               flags=re.DOTALL)
         else:
             match = re.search(r'{}.*?\*/\s*(.*?)$'.format(start_comment), header_content, flags=re.DOTALL)
