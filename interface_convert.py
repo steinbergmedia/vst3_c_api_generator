@@ -36,7 +36,7 @@ recognised otherwise.
 # ----------------------------------------------------------------------------------------------------------------------
 # ----- script begin ---------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-from data_classes import Enum, Container
+from data_classes import Enum, Container, Interface
 
 """library import statements"""
 import re
@@ -141,38 +141,24 @@ def parse_interfaces(cursor):
     if not children:
         # this is only a forward declaration
         return
-    interface_source.append(get_cursor_location(cursor.location))
-    interface_description.append(cursor.brief_comment)
-    interface_name.append(convert_cursor(cursor))
-
-    method_name.append([])
-    method_return.append([])
-    method_args.append([])
-
-    inheritors = []
+    interface = Interface(convert_cursor(cursor), get_cursor_location(cursor.location), cursor.brief_comment)
     for cursor_child in children:
         store_interface_typedefs(cursor_child)
         parse_enum(cursor_child)
-        parse_inheritance(cursor_child, inheritors)
+        parse_inheritance(cursor_child, interface)
         parse_variables(cursor_child)
-        parse_methods(cursor_child, len(method_name) - 1)
-
-    inherits_table.append(inheritors)
+        parse_methods(cursor_child, interface)
+    interfaces.append(interface)
 
 
 """parses and stores information about interface inheritance"""
 # noinspection SpellCheckingInspection
-def parse_inheritance(cursor: Cursor, result: List[str]):
+def parse_inheritance(cursor: Cursor, interface: Interface):
     if is_not_kind(cursor, 'CXX_BASE_SPECIFIER'):
         return
-    cursor_type = convert_namespace(cursor.type.spelling)
-    inheritors = []
-    if cursor_type in interface_name:
-        inheritors = inherits_table[interface_name.index(cursor_type)].copy()
-    inheritors.append(cursor_type)
-    for inheritor in inheritors:
-        if inheritor not in result:
-            result.append(inheritor)
+    base_interface_name = convert_namespace(cursor.type.spelling)
+    if base_interface_name in interfaces:
+        interface.add_base_class(interfaces[base_interface_name])
 
 
 # ----- parse IIDs -----------------------------------------------------------------------------------------------------
@@ -202,12 +188,13 @@ def get_id_token_spellings_from_extent(cursor: Cursor) -> List[str]:
 
 """executes method argument parse function and stores returned string"""
 # noinspection SpellCheckingInspection
-def parse_methods(cursor: Cursor, position: int):
+def parse_methods(cursor: Cursor, interface: Interface):
     if is_not_kind(cursor, 'CXX_METHOD'):
         return
-    method_name[position].append(cursor.spelling)
-    method_return[position].append(create_struct_prefix(cursor.result_type) + convert_type(cursor.result_type))
-    method_args[position].append([', '.join(_parse_method_arguments(cursor))])
+    method_name = cursor.spelling
+    method_return_type = create_struct_prefix(cursor.result_type) + convert_type(cursor.result_type)
+    method_args = _parse_method_arguments(cursor)
+    interface.add_method (method_name, method_return_type, method_args)
 
 
 """parses method arguments and returns formatted string"""
@@ -507,7 +494,7 @@ def generate_typedefs():
     string = ""
     for typedef in range(len(typedef_name)):
         if typedef_return[typedef]:
-            if typedef_return[typedef] in struct_table or typedef_return[typedef] in interface_name\
+            if typedef_return[typedef] in struct_table or typedef_return[typedef] in interfaces\
                     or typedef_return[typedef] in enums:
                 string += "typedef struct {} {};\n".format(typedef_return[typedef], typedef_name[typedef])
             else:
@@ -526,7 +513,7 @@ def generate_interface_typedefs():
     for interface_typedef in range(len(interface_typedef_name)):
         if typedef_return[interface_typedef]:
             if interface_typedef_return[interface_typedef] in struct_table\
-                or interface_typedef_return[interface_typedef] in interface_name\
+                or interface_typedef_return[interface_typedef] in interfaces\
                     or interface_typedef_return[interface_typedef] in enums:
                 string += "typedef struct {} {};\n".format(interface_typedef_return[interface_typedef],
                                                            interface_typedef_name[interface_typedef])
@@ -546,8 +533,8 @@ def generate_forward():
     string += "----- Interface forward declarations -----------------------------------------------------------------------------------\n"
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
-    for forward_interface in range(len(interface_name)):
-        string += "struct {};\n".format(interface_name[forward_interface])
+    for forward_interface in interfaces:
+        string += "struct {};\n".format(forward_interface.name)
     string += "\n"
     string += "\n"
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
@@ -663,60 +650,35 @@ def generate_interface():
     string += "----- Interfaces -------------------------------------------------------------------------------------------------------\n"
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
-    for interface in range(len(interface_name)):
+    for interface in interfaces:
         string += "/*----------------------------------------------------------------------------------------------------------------------\n"
-        string += "{} */\n".format(interface_source[interface])
+        string += "{} */\n".format(interface.source_location)
         string += "\n"
-        string += "typedef struct {}Vtbl\n".format(interface_name[interface])
+        string += "typedef struct {}Vtbl\n".format(interface.name)
         string += "{\n"
-        string += generate_methods(interface)
-        string += "{} {}Vtbl;\n".format("}", interface_name[interface])
+        for base_class in interface.base_classes:
+            string += "    /* methods derived from \"{}\": */\n".format(base_class.name)
+            string += "\n".join(base_class.methods)
+            string += "\n\n"
+        if interface.methods:
+            string += "    /* methods defined in \"{}\": */\n".format(interface.name)
+            string += "\n".join(interface.methods)
+            string += "\n\n"
+        string += "{} {}Vtbl;\n".format("}", interface.name)
         string += "\n"
-        string += "typedef struct {}\n".format(interface_name[interface])
+        string += "typedef struct {}\n".format(interface.name)
         string += "{\n"
-        string += "    struct {}Vtbl* lpVtbl;\n".format(interface_name[interface])
-        string += "{} {};\n".format("}", interface_name[interface])
+        string += "    struct {}Vtbl* lpVtbl;\n".format(interface.name)
+        string += "{} {};\n".format("}", interface.name)
         string += "\n"
-        interface_ids = id_table.get(interface_name[interface], None)
+        interface_ids = id_table.get(interface.name, None)
         if interface_ids:
-            string += "static Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface_name[interface],
+            string += "static Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface.name,
                                                                                                   interface_ids[0],
                                                                                                   interface_ids[1],
                                                                                                   interface_ids[2],
                                                                                                   interface_ids[3])
         string += "\n"
-    string += "\n"
-    return string
-
-
-"""generates formatted methods within interfaces for converted header, returns string"""
-# noinspection SpellCheckingInspection
-def generate_methods(interface):
-    string = ""
-    for inheritor in inherits_table[interface]:
-        methods_location = interface_name.index(inheritor)
-        string += "    /* methods derived from \"{}\": */\n".format(inheritor)
-        for j in range(len(method_name[methods_location])):
-            if method_args[methods_location][j][0] == "":
-                string += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\n".format(
-                    method_return[methods_location][j],
-                    method_name[methods_location][j])
-            elif method_args[methods_location][j][0] != "":
-
-                string += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});\n".format(
-                    method_return[methods_location][j],
-                    method_name[methods_location][j],
-                    method_args[methods_location][j][0])
-        string += "\n"
-    string += "    /* methods defined in \"{}\": */\n".format(interface_name[interface])
-    for method in range(len(method_name[interface])):
-        if method_args[interface][method][0] == "":
-            string += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface);\n".format(method_return[interface][method],
-                                                                                            method_name[interface][method])
-        elif method_args[interface][method][0] != "":
-            string += "    {} (SMTG_STDMETHODCALLTYPE* {}) (void* thisInterface, {});\n".format(method_return[interface][method],
-                                                                                                method_name[interface][method],
-                                                                                                method_args[interface][method][0])
     string += "\n"
     return string
 
@@ -761,18 +723,17 @@ def print_info():
     for i in range(len(struct_table)):
         print(" {}".format(struct_table[i]))
     print()
-    print("Number of interfaces: {}".format(len(interface_name)))
+    print("Number of interfaces: {}".format(len(interfaces)))
     print()
-    for i in range(len(interface_name)):
-        print("Interface {}: {}".format(i + 1, interface_name[i]))
-        print(interface_source[i])
-        print("Info:", interface_description[i])
-        print("Inherits:")
-        for j in range(len(inherits_table[i])):
-            print(" ", inherits_table[i][j])
+    for inedex, interface in enumerate(interfaces):
+        print("Interface {}: {}".format(inedex + 1, interface.name))
+        print(interface.source_location)
+        print("Info:", interface.description)
         print("Methods:")
-        for j in range(len(method_name[i])):
-            print(" ", method_name[i][j])
+        for method in interface.methods:
+            match = re.search('SMTG_STDMETHODCALLTYPE\*\s+([^)]+)', method)
+            if match:
+                print(" {}".format(match.group(1)))
         print()
     print()
 
@@ -780,16 +741,10 @@ def print_info():
 # ----- Arrays ---------------------------------------------------------------------------------------------------------
 
 """defines all used arrays"""
-interface_source = []
-interface_description = []
-interface_name = []
+interfaces = Container()
 inherits_table = []
 
 includes_list = []
-
-method_name = []
-method_return = []
-method_args = []
 
 union_return = []
 union_parent = []
@@ -819,14 +774,9 @@ blocklist = ["FUID", "FReleaser"]
 
 """clears all used arrays"""
 def clear_arrays():
-    global interface_source
-    global interface_description
-    global interface_name
+    global interfaces
     global inherits_table
     global includes_list
-    global method_name
-    global method_return
-    global method_args
     global union_return
     global union_parent
     global union_content
@@ -845,16 +795,10 @@ def clear_arrays():
     global variable_value
     global id_table
 
-    interface_source = []
-    interface_description = []
-    interface_name = []
+    interfaces.clear()
     inherits_table = []
 
     includes_list = []
-
-    method_name = []
-    method_return = []
-    method_args = []
 
     union_return = []
     union_parent = []
