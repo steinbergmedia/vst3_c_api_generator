@@ -169,11 +169,12 @@ def parse_iid(cursor: Cursor, namespace: str):
     if is_not_kind(cursor, 'VAR_DECL') or not cursor.spelling.endswith('_iid'):
         return
     id_tokens = get_id_token_spellings_from_extent(cursor)
-    interface = convert_namespace(namespace)
-    if interface:
-        interface += '_'
-    interface += id_tokens[2]
-    id_table[interface] = [id_tokens[4], id_tokens[6], id_tokens[8], id_tokens[10]]
+    interface_name = convert_namespace(namespace)
+    if interface_name:
+        interface_name += '_'
+    interface_name += id_tokens[2]
+    if interface_name in interfaces:
+        interfaces[interface_name].set_iid(id_tokens[4], id_tokens[6], id_tokens[8], id_tokens[10])
 
 
 """uses tokens to return IID spellings as string"""
@@ -671,14 +672,9 @@ def generate_interface():
         string += "    struct {}Vtbl* lpVtbl;\n".format(interface.name)
         string += "{} {};\n".format("}", interface.name)
         string += "\n"
-        interface_ids = id_table.get(interface.name, None)
-        if interface_ids:
-            string += "static Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});\n".format(interface.name,
-                                                                                                  interface_ids[0],
-                                                                                                  interface_ids[1],
-                                                                                                  interface_ids[2],
-                                                                                                  interface_ids[3])
-        string += "\n"
+        if interface.iid:
+            string += interface.iid
+            string += "\n\n"
     string += "\n"
     return string
 
@@ -767,8 +763,6 @@ variable_return = []
 variable_name = []
 variable_value = []
 
-id_table = {}
-
 blocklist = ["FUID", "FReleaser"]
 
 
@@ -793,7 +787,6 @@ def clear_arrays():
     global variable_return
     global variable_name
     global variable_value
-    global id_table
 
     interfaces.clear()
     inherits_table = []
@@ -820,8 +813,6 @@ def clear_arrays():
     variable_return = []
     variable_name = []
     variable_value = []
-
-    id_table = {}
 
 
 # ----------------------------------------------------------------------------------------------------------------------

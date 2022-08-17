@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 
 class Container(list):
@@ -8,9 +8,11 @@ class Container(list):
                 return True
         return False
 
-    def __getitem__(self, name: str):
+    def __getitem__(self, name_or_index: Union[str, int, slice]):
+        if type(name_or_index) != str:
+            return super(Container, self).__getitem__(name_or_index)
         for element in self:
-            if element.name == name:
+            if element.name == name_or_index:
                 return element
         return None
 
@@ -47,6 +49,7 @@ class Interface:
         self._description = description
         self._base_classes = []
         self._methods = []
+        self._iid = None
 
     @property
     def name(self) -> str:
@@ -65,7 +68,7 @@ class Interface:
         return self._methods
 
     @property
-    def base_classes(self) -> List["Interface"]:
+    def base_classes(self) -> List['Interface']:
         result = []
         for base_class in self._base_classes:
             for base_base_class in base_class.base_classes:
@@ -75,13 +78,21 @@ class Interface:
                 result.append(base_class)
         return result
 
+    @property
+    def iid(self) -> str:
+        return self._iid
+
     # noinspection SpellCheckingInspection
-    def add_method(self, name, return_type, args):
+    def add_method(self, name: str, return_type: str, args: List[str]):
         method = f'    {return_type} (SMTG_STDMETHODCALLTYPE* {name}) (void* thisInterface'
         if args:
             method += ', ' + ', '.join(args)
         method += ');'
         self._methods.append(method)
 
-    def add_base_class(self, base_interface):
+    def add_base_class(self, base_interface: 'Interface'):
         self._base_classes.append(base_interface)
+
+    def set_iid(self, token1, token2, token3, token4):
+        self._iid = 'static Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});'.format(self.name, token1, token2,
+                                                                                              token3, token4)
