@@ -20,7 +20,7 @@ typedef struct Steinberg_Vst_IUnitHandlerVtbl
     Steinberg_uint32 (SMTG_STDMETHODCALLTYPE* addRef) (void* thisInterface);
 
     /* methods defined in "Steinberg_Vst_IUnitHandler": */
-    Steinberg_tresult (SMTG_STDMETHODCALLTYPE* notifyUnitSelection) (void* thisInterface, Steinberg_UnitID unitId);
+    Steinberg_tresult (SMTG_STDMETHODCALLTYPE* notifyUnitSelection) (void* thisInterface, int event);
     Steinberg_tresult (SMTG_STDMETHODCALLTYPE* notifyProgramListChange) (void* thisInterface, Steinberg_ProgramListID listId, Steinberg_int32 programIndex);
 
 } Steinberg_Vst_IUnitHandlerVtbl;
@@ -60,7 +60,7 @@ typedef struct Steinberg_Vst_IUnitInfoVtbl
     Steinberg_tresult (SMTG_STDMETHODCALLTYPE* notifyUnitByBusChange) (void* thisInterface);
 
     /* methods derived from "Steinberg_Vst_IUnitHandler": */
-    Steinberg_tresult (SMTG_STDMETHODCALLTYPE* notifyUnitSelection) (void* thisInterface, Steinberg_UnitID unitId);
+    Steinberg_tresult (SMTG_STDMETHODCALLTYPE* notifyUnitSelection) (void* thisInterface, int event);
     Steinberg_tresult (SMTG_STDMETHODCALLTYPE* notifyProgramListChange) (void* thisInterface, Steinberg_ProgramListID listId, Steinberg_int32 programIndex);
 
     /* methods defined in "Steinberg_Vst_IUnitInfo": */

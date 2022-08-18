@@ -10,8 +10,14 @@ class IBStream
 	};
 };
 
-
 namespace Vst {
+
+enum MediaTypes
+{
+	kAudio = 0,
+	kEvent,
+	kNumMediaTypes
+};
 
 class IAutomationState
 {

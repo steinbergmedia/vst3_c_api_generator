@@ -6,6 +6,13 @@
 namespace Steinberg {
 namespace Vst {
 
+enum MediaTypes
+{
+	kAudio = 0,
+	kEvent,
+	kNumMediaTypes
+};
+
 struct UnitInfo
 {
 	UnitID id;
@@ -16,7 +23,7 @@ struct UnitInfo
 
 class IUnitHandler : public FUnknown
 {
-	virtual tresult PLUGIN_API notifyUnitSelection (UnitID unitId) = 0;
+	virtual tresult PLUGIN_API notifyUnitSelection (kEvent event) = 0;
 	virtual tresult PLUGIN_API notifyProgramListChange (ProgramListID listId, int32 programIndex) = 0;
 
 	static const FUID iid;
