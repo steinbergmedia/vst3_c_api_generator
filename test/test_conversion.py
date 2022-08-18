@@ -55,6 +55,14 @@ class TestConversion(unittest.TestCase):
         content_section = self._get_section('Interfaces', '', self._convert_header(header_name))
         self.assertEqual(self._load_expectation(header_name), content_section)
 
+    def test_typedefs(self):
+        header_name = 'typedefs'
+        generated_source = self._convert_header(header_name)
+        content_section = self._get_section('Typedefs', 'Interface forward declarations', generated_source)
+        content_section += '\n\n'
+        content_section += self._get_section('Interface typedefs', 'Enums', generated_source)
+        self.assertEqual(self._load_expectation(header_name), content_section)
+
     def test_vst_interfaces(self):
         header_name = 'vst_interfaces'
         content_section = self._get_section('Interfaces', '', self._convert_header(header_name))
