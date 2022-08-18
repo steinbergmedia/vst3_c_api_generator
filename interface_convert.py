@@ -37,7 +37,7 @@ recognised otherwise.
 # ----------------------------------------------------------------------------------------------------------------------
 
 # library import statements
-from data_classes import Enum, Container, Interface, Struct, Variable
+from data_classes import Enum, Container, Interface, Struct, Variable, Union
 
 import re
 import sys
@@ -254,13 +254,13 @@ def parse_union(parent, cursor):
     if not children:
         # this is only a forward declaration
         return
-    union_parent.append(parent)
-    union_content.append([])
-    union_return.append([])
+    union = Union(parent)
     for cursor_child in children:
-        if is_kind(cursor_child, 'FIELD_DECL'):
-            union_content[-1].append(convert_cursor(cursor_child))
-            union_return[-1].append(convert_type(cursor_child.type))
+        if is_not_kind(cursor_child, 'FIELD_DECL'):
+            continue
+        member_return_type = create_struct_prefix(cursor_child.type) + convert_type(cursor_child.type)
+        union.add_member('{} {}'.format(member_return_type, convert_cursor(cursor_child)))
+    unions.append(union)
 
 
 def parse_enum(cursor: Cursor) -> bool:
@@ -589,15 +589,11 @@ def generate_enums():
 def generate_union(parent):
     """generates formatted unions within structs for converted header, returns string"""
     string = ""
-    if parent in union_parent:
-        position = union_parent.index(parent)
+    if parent in unions:
+        union = unions[parent]
         string += "    union {\n"
-        for union in range(len(union_content[position])):
-            if union_return[position][union] in structs:
-                string += "        struct " + union_return[position][union] + " "
-            else:
-                string += "        " + union_return[position][union] + " "
-            string += union_content[position][union] + ";\n"
+        for member in union.members:
+            string += "        {};\n".format(member)
         string += "    };\n"
     return string
 
@@ -714,11 +710,7 @@ def print_info():
 
 """defines all used arrays"""
 interfaces = Container()
-
-union_return = []
-union_parent = []
-union_content = []
-
+unions = Container()
 structs = Container()
 enums = Container()
 
@@ -735,9 +727,7 @@ blocklist = ["FUID", "FReleaser"]
 def clear_arrays():
     """clears all used arrays"""
     global interfaces
-    global union_return
-    global union_parent
-    global union_content
+    global unions
     global structs
     global enums
     global typedef_name
@@ -747,11 +737,7 @@ def clear_arrays():
     global variables
 
     interfaces.clear()
-
-    union_return = []
-    union_parent = []
-    union_content = []
-
+    unions.clear()
     structs.clear()
     enums.clear()
 

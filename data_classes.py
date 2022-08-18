@@ -1,4 +1,5 @@
-from typing import List, Union
+from typing import List
+from typing import Union as UnionType
 
 
 class Container(list):
@@ -8,7 +9,7 @@ class Container(list):
                 return True
         return False
 
-    def __getitem__(self, name_or_index: Union[str, int, slice]):
+    def __getitem__(self, name_or_index: UnionType[str, int, slice]):
         if type(name_or_index) != str:
             return super().__getitem__(name_or_index)
         for element in self:
@@ -115,3 +116,16 @@ class Variable(Base):
 
     def __str__(self):
         return f'static {self._return_type} {self.name} = {self._value};'
+
+
+class Union(Base):
+    def __init__(self, parent: str):
+        super().__init__(parent)
+        self._members = []
+
+    @property
+    def members(self):
+        return self._members
+
+    def add_member(self, member):
+        self._members.append(member)
