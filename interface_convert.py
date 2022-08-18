@@ -37,7 +37,7 @@ recognised otherwise.
 # ----------------------------------------------------------------------------------------------------------------------
 
 # library import statements
-from data_classes import Enum, Container, Interface, Struct, Variable, Union
+from data_classes import Enum, Container, Interface, Struct, Variable, Union, Typedef
 
 import re
 import sys
@@ -89,26 +89,17 @@ def parsing(cursor: Cursor, namespace: str = ''):
     parse_enum(cursor)
     parse_structs(cursor)
     parse_iid(cursor, namespace)
-    store_typedefs(cursor)
+    store_typedefs(cursor, typedefs)
     parse_variables(cursor)
 
 
 # ----- parse typedefs -------------------------------------------------------------------------------------------------
 
-def store_typedefs(cursor):
+def store_typedefs(cursor, typedef_list: Container):
     """executes typedef parse and stores value"""
     return_type, name = parse_typedefs(cursor)
     if return_type and name:
-        typedef_return.append(return_type)
-        typedef_name.append(name)
-
-
-def store_interface_typedefs(cursor):
-    """executes typedef parse and stores value"""
-    return_type, name = parse_typedefs(cursor)
-    if return_type and name:
-        interface_typedef_return.append(return_type)
-        interface_typedef_name.append(name)
+        typedef_list.append(Typedef(name, return_type))
 
 
 # noinspection SpellCheckingInspection
@@ -117,12 +108,12 @@ def parse_typedefs(cursor):
     if is_not_kind(cursor, 'TYPEDEF_DECL') and is_not_kind(cursor, 'TYPE_ALIAS_DECL'):
         return None, None
     if is_kind(cursor.underlying_typedef_type, 'CONSTANTARRAY'):
-        return_type = convert_type(cursor.underlying_typedef_type.element_type)
-        name = '{}[{}]'.format(convert_type(cursor.type), cursor.underlying_typedef_type.element_count)
+        return_type = cursor.underlying_typedef_type.element_type
+        name_string = '{}[{}]'.format(convert_type(cursor.type), cursor.underlying_typedef_type.element_count)
     else:
-        return_type = convert_type(cursor.underlying_typedef_type)
-        name = convert_cursor(cursor)
-    return return_type, name
+        return_type = cursor.underlying_typedef_type
+        name_string = convert_cursor(cursor)
+    return create_struct_prefix(return_type) + convert_type(return_type), name_string
 
 
 # ----- parse interfaces -----------------------------------------------------------------------------------------------
@@ -137,7 +128,7 @@ def parse_interfaces(cursor):
         return
     interface = Interface(convert_cursor(cursor), get_cursor_location(cursor.location), cursor.brief_comment)
     for cursor_child in children:
-        store_interface_typedefs(cursor_child)
+        store_typedefs(cursor_child, interface_typedefs)
         parse_enum(cursor_child)
         parse_inheritance(cursor_child, interface)
         parse_variables(cursor_child)
@@ -463,48 +454,19 @@ def generate_standard(source_file: str):
     string += "}\n"
     string += "#endif\n"
     string += "\n"
-    string += generate_typedefs()
-    string += "\n"
-    string += "\n"
     return string
 
 
-def generate_typedefs():
+def generate_typedefs(typedefs_list: Container, comment: str):
     """generates formatted typedefs for converted header, returns string"""
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
-    string += "----- Typedefs ---------------------------------------------------------------------------------------------------------\n"
+    string += "----- {} {}\n".format(comment, '-' * (113 - len(comment)))
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
-    for typedef in range(len(typedef_name)):
-        if typedef_return[typedef]:
-            if typedef_return[typedef] in structs or typedef_return[typedef] in interfaces\
-                    or typedef_return[typedef] in enums:
-                string += "typedef struct {} {};\n".format(typedef_return[typedef], typedef_name[typedef])
-            else:
-                string += "typedef {} {};\n".format(typedef_return[typedef], typedef_name[typedef])
-    return string
-
-
-def generate_interface_typedefs():
-    """generates formatted typedefs within interfaces for converted header, returns string"""
-    string = ""
-    string += "/*----------------------------------------------------------------------------------------------------------------------\n"
-    string += "----- Interface typedefs -----------------------------------------------------------------------------------------------\n"
-    string += "----------------------------------------------------------------------------------------------------------------------*/\n"
-    string += "\n"
-    for interface_typedef in range(len(interface_typedef_name)):
-        if typedef_return[interface_typedef]:
-            if interface_typedef_return[interface_typedef] in structs\
-                or interface_typedef_return[interface_typedef] in interfaces\
-                    or interface_typedef_return[interface_typedef] in enums:
-                string += "typedef struct {} {};\n".format(interface_typedef_return[interface_typedef],
-                                                           interface_typedef_name[interface_typedef])
-            else:
-                string += "typedef {} {};\n".format(interface_typedef_return[interface_typedef],
-                                                    interface_typedef_name[interface_typedef])
-    string += "\n"
-    string += "\n"
+    for typedef in typedefs_list:
+        string += "{}\n".format(typedef)
+    string += "\n\n"
     return string
 
 
@@ -671,9 +633,10 @@ def generate_variables():
 def generate_conversion(source_file: str):
     """executes individual generator functions, returns finalised string"""
     string = generate_standard(source_file)
+    string += generate_typedefs(typedefs, 'Typedefs')
     string += generate_forward()
     string += generate_result_values()
-    string += generate_interface_typedefs()
+    string += generate_typedefs(interface_typedefs, 'Interface typedefs')
     string += generate_enums()
     string += generate_variables()
     string += generate_structs()
@@ -713,12 +676,8 @@ interfaces = Container()
 unions = Container()
 structs = Container()
 enums = Container()
-
-typedef_name = []
-typedef_return = []
-interface_typedef_return = []
-interface_typedef_name = []
-
+typedefs = Container()
+interface_typedefs = Container()
 variables = Container()
 
 blocklist = ["FUID", "FReleaser"]
@@ -730,22 +689,16 @@ def clear_arrays():
     global unions
     global structs
     global enums
-    global typedef_name
-    global typedef_return
-    global interface_typedef_return
-    global interface_typedef_name
+    global typedefs
+    global interface_typedefs
     global variables
 
     interfaces.clear()
     unions.clear()
     structs.clear()
     enums.clear()
-
-    typedef_name = []
-    typedef_return = []
-    interface_typedef_return = []
-    interface_typedef_name = []
-
+    typedefs.clear()
+    interface_typedefs.clear()
     variables.clear()
 
 

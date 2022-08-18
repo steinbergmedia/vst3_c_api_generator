@@ -109,13 +109,13 @@ class Struct(Base):
 
 
 class Variable(Base):
-    def __init__(self, name: str, return_type: str, value: str):
+    def __init__(self, name: str, value_type: str, value: str):
         super().__init__(name)
-        self._return_type = return_type
+        self._value_type = value_type
         self._value = value
 
     def __str__(self):
-        return f'static {self._return_type} {self.name} = {self._value};'
+        return f'static {self._value_type} {self.name} = {self._value};'
 
 
 class Union(Base):
@@ -129,3 +129,12 @@ class Union(Base):
 
     def add_member(self, member):
         self._members.append(member)
+
+
+class Typedef(Base):
+    def __init__(self, name: str, return_type: str):
+        super().__init__(name)
+        self._return_type = return_type
+
+    def __str__(self):
+        return f'typedef {self._return_type} {self.name};'
