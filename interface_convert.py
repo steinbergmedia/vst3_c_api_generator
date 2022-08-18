@@ -32,13 +32,13 @@ recognised otherwise.
 ------------------------------------------------------------------------------------------------------------------------
 """
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----- script begin ---------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+
+# library import statements
 from data_classes import Enum, Container, Interface
 
-"""library import statements"""
 import re
 import sys
 from optparse import OptionParser
@@ -53,9 +53,8 @@ from clang_helpers import create_translation_unit, TokenGroup, is_not_kind, is_v
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-"""excludes unusable parts and executes parse functions"""
-# noinspection SpellCheckingInspection
 def parse_header(cursor: Cursor):
+    """excludes unusable parts and executes parse functions"""
     if is_not_kind(cursor, 'TRANSLATION_UNIT'):
         return
     root_path = normalise_link(str(Path(cursor.spelling).parents[2]))
@@ -70,9 +69,8 @@ def parse_header(cursor: Cursor):
         parsing(cursor_child)
 
 
-"""recursively parses namespaces and executes parse functions"""
-# noinspection SpellCheckingInspection
 def parse_namespace(cursor: Cursor, namespace: str = '') -> bool:
+    """recursively parses namespaces and executes parse functions"""
     if is_not_kind(cursor, 'NAMESPACE'):
         return False
     if namespace:
@@ -85,9 +83,8 @@ def parse_namespace(cursor: Cursor, namespace: str = '') -> bool:
     return True
 
 
-"""executes specific parse functions"""
-# noinspection SpellCheckingInspection
 def parsing(cursor: Cursor, namespace: str = ''):
+    """executes specific parse functions"""
     parse_interfaces(cursor)
     parse_enum(cursor)
     parse_structs(cursor)
@@ -98,27 +95,25 @@ def parsing(cursor: Cursor, namespace: str = ''):
 
 # ----- parse typedefs -------------------------------------------------------------------------------------------------
 
-"""executes typedef parse and stores value"""
-# noinspection SpellCheckingInspection
 def store_typedefs(cursor):
+    """executes typedef parse and stores value"""
     return_type, name = parse_typedefs(cursor)
     if return_type and name:
         typedef_return.append(return_type)
         typedef_name.append(name)
 
 
-"""executes typedef parse and stores value"""
-# noinspection SpellCheckingInspection
 def store_interface_typedefs(cursor):
+    """executes typedef parse and stores value"""
     return_type, name = parse_typedefs(cursor)
     if return_type and name:
         interface_typedef_return.append(return_type)
         interface_typedef_name.append(name)
 
 
-"""parses typedefs and formats output"""
 # noinspection SpellCheckingInspection
 def parse_typedefs(cursor):
+    """parses typedefs and formats output"""
     if is_not_kind(cursor, 'TYPEDEF_DECL') and is_not_kind(cursor, 'TYPE_ALIAS_DECL'):
         return None, None
     if is_kind(cursor.underlying_typedef_type, 'CONSTANTARRAY'):
@@ -132,9 +127,8 @@ def parse_typedefs(cursor):
 
 # ----- parse interfaces -----------------------------------------------------------------------------------------------
 
-"""executes all specific interface-related parse functions and stores information"""
-# noinspection SpellCheckingInspection
 def parse_interfaces(cursor):
+    """executes all specific interface-related parse functions and stores information"""
     if is_not_kind(cursor, 'CLASS_DECL') or cursor.spelling in blocklist:
         return
     children = list(cursor.get_children())
@@ -151,9 +145,8 @@ def parse_interfaces(cursor):
     interfaces.append(interface)
 
 
-"""parses and stores information about interface inheritance"""
-# noinspection SpellCheckingInspection
 def parse_inheritance(cursor: Cursor, interface: Interface):
+    """parses and stores information about interface inheritance"""
     if is_not_kind(cursor, 'CXX_BASE_SPECIFIER'):
         return
     base_interface_name = convert_namespace(cursor.type.spelling)
@@ -163,9 +156,8 @@ def parse_inheritance(cursor: Cursor, interface: Interface):
 
 # ----- parse IIDs -----------------------------------------------------------------------------------------------------
 
-"""parses and stores IIDs of interfaces"""
-# noinspection SpellCheckingInspection
 def parse_iid(cursor: Cursor, namespace: str):
+    """parses and stores IIDs of interfaces"""
     if is_not_kind(cursor, 'VAR_DECL') or not cursor.spelling.endswith('_iid'):
         return
     id_tokens = get_id_token_spellings_from_extent(cursor)
@@ -177,9 +169,8 @@ def parse_iid(cursor: Cursor, namespace: str):
         interfaces[interface_name].set_iid(id_tokens[4], id_tokens[6], id_tokens[8], id_tokens[10])
 
 
-"""uses tokens to return IID spellings as string"""
-# noinspection SpellCheckingInspection
 def get_id_token_spellings_from_extent(cursor: Cursor) -> List[str]:
+    """uses tokens to return IID spellings as string"""
     cursor_tu = cursor.translation_unit
     extent = cursor_tu.get_extent(cursor.location.file.name, [cursor.extent.start.offset, cursor.extent.end.offset])
     return [token.spelling for token in TokenGroup.get_tokens(cursor_tu, extent)]
@@ -187,20 +178,18 @@ def get_id_token_spellings_from_extent(cursor: Cursor) -> List[str]:
 
 # ----- parse methods --------------------------------------------------------------------------------------------------
 
-"""executes method argument parse function and stores returned string"""
-# noinspection SpellCheckingInspection
 def parse_methods(cursor: Cursor, interface: Interface):
+    """executes method argument parse function and stores returned string"""
     if is_not_kind(cursor, 'CXX_METHOD'):
         return
     method_name = cursor.spelling
     method_return_type = create_struct_prefix(cursor.result_type) + convert_type(cursor.result_type)
     method_args = _parse_method_arguments(cursor)
-    interface.add_method (method_name, method_return_type, method_args)
+    interface.add_method(method_name, method_return_type, method_args)
 
 
-"""parses method arguments and returns formatted string"""
-# noinspection SpellCheckingInspection
 def _parse_method_arguments(cursor: Cursor) -> List[str]:
+    """parses method arguments and returns formatted string"""
     args = []
     for cursor_child in cursor.get_arguments():
         argument_type = create_struct_prefix(cursor_child.type) + convert_type(cursor_child.type)
@@ -209,18 +198,17 @@ def _parse_method_arguments(cursor: Cursor) -> List[str]:
     return args
 
 
-"""specific conversion case, not otherwise covered by functions"""
-# noinspection SpellCheckingInspection
 def _convert_method_args_name(source: str) -> str:
+    """specific conversion case, not otherwise covered by functions"""
     if source == '_iid':
         return 'iid'
     return source
 
 # ----- specific parse functions ---------------------------------------------------------------------------------------
 
-"""parses and stores variable definition information"""
-# noinspection SpellCheckingInspection
+
 def parse_variables(cursor):
+    """parses and stores variable definition information"""
     if is_not_kind(cursor, 'VAR_DECL') or is_not_kind(cursor.type, 'TYPEDEF'):
         return
     variable_return.append(convert_type(cursor.type))
@@ -228,9 +216,9 @@ def parse_variables(cursor):
     variable_value.append(_visit_children(list(cursor.get_children())[-1]))
 
 
-"""parses, formats and stores struct information, executes union parse function"""
 # noinspection SpellCheckingInspection
 def parse_structs(cursor):
+    """parses, formats and stores struct information, executes union parse function"""
     if is_not_kind(cursor, 'STRUCT_DECL') or cursor.spelling in blocklist:
         return
     children = list(cursor.get_children())
@@ -258,9 +246,8 @@ def parse_structs(cursor):
         struct_content.append(fields)
 
 
-"""parses and stores union information within a struct"""
-# noinspection SpellCheckingInspection
 def parse_union(parent, cursor):
+    """parses and stores union information within a struct"""
     if is_not_kind(cursor, 'UNION_DECL') or cursor.spelling in blocklist:
         return
     children = list(cursor.get_children())
@@ -276,9 +263,8 @@ def parse_union(parent, cursor):
             union_return[-1].append(convert_type(cursor_child.type))
 
 
-"""parses and stores enum information"""
-# noinspection SpellCheckingInspection
 def parse_enum(cursor: Cursor) -> bool:
+    """parses and stores enum information"""
     if is_not_kind(cursor, 'ENUM_DECL'):
         return False
     if not cursor.spelling:
@@ -298,9 +284,8 @@ def parse_enum(cursor: Cursor) -> bool:
 # ----- utility functions ----------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-"""returns token spelling after passing extent of first cursor child"""
-# noinspection SpellCheckingInspection
 def _get_binary_operator(cursor: Cursor, children: List[Cursor]) -> str:
+    """returns token spelling after passing extent of first cursor child"""
     start = children[0].extent.end.offset
     for token in cursor.get_tokens():
         if token.extent.start.offset < start:
@@ -309,9 +294,8 @@ def _get_binary_operator(cursor: Cursor, children: List[Cursor]) -> str:
     return ''
 
 
-"""analyses cursor children, formats and returns string based on CursorKind"""
-# noinspection SpellCheckingInspection
 def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
+    """analyses cursor children, formats and returns string based on CursorKind"""
     children = list(cursor.get_children())
     if is_kind(cursor, 'BINARY_OPERATOR'):
         operator = _get_binary_operator(cursor, children)
@@ -344,9 +328,9 @@ def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
         raise TypeError('CursorKind: {} ist not supported!'.format(cursor.kind.name))
 
 
-"""checks if cursor is a struct and returns respective prefix"""
 # noinspection SpellCheckingInspection
 def create_struct_prefix(cursor_type: Type) -> str:
+    """checks if cursor is a struct and returns respective prefix"""
     pointee = cursor_type.get_pointee()
     while is_valid(pointee):
         cursor_type = pointee
@@ -357,44 +341,38 @@ def create_struct_prefix(cursor_type: Type) -> str:
     return ''
 
 
-"""normalises link nomenclature"""
-# noinspection SpellCheckingInspection
 def normalise_link(source: str) -> str:
+    """normalises link nomenclature"""
     return source.replace('\\', '/')
 
 
-"""finds cursor's location and returns it as formatted string"""
-# noinspection SpellCheckingInspection
 def get_cursor_location(cursor_location: SourceLocation) -> str:
+    """finds cursor's location and returns it as formatted string"""
     return 'Source: "{}", line {}'.format(_remove_build_path(cursor_location.file.name), cursor_location.line)
 
 
-"""removes devise-specific information from generated locations"""
-# noinspection SpellCheckingInspection
 def _remove_build_path(file_name: str) -> str:
+    """removes devise-specific information from generated locations"""
     return re.sub('^.*(pluginterfaces/)', '\\1', normalise_link(file_name))
 
 
 # ----- namespace functions --------------------------------------------------------------------------------------------
 
-"""formats given namespace prefix and returns it as string"""
-# noinspection SpellCheckingInspection
 def convert_namespace(source: str) -> str:
+    """formats given namespace prefix and returns it as string"""
     return source.replace('::', '_')
 
 
-"""gets namespace, formats  prefix and returns it as string"""
-# noinspection SpellCheckingInspection
 def create_namespace_prefix(cursor: Cursor) -> str:
+    """gets namespace, formats  prefix and returns it as string"""
     namespaces = _get_namespaces(cursor)
     if not namespaces:
         return ''
     return '_'.join(namespaces) + '_'
 
 
-"""finds cursor's namespace and returns it as string"""
-# noinspection SpellCheckingInspection
 def _get_namespaces(cursor: Cursor) -> List[str]:
+    """finds cursor's namespace and returns it as string"""
     cursor_definition = cursor.get_definition()
     if cursor_definition:
         cursor = cursor_definition
@@ -411,9 +389,8 @@ def _get_namespaces(cursor: Cursor) -> List[str]:
 # ----- conversion functions -------------------------------------------------------------------------------------------
 
 
-"""attaches namespace prefix to cursor and returns formatted name as string"""
-# noinspection SpellCheckingInspection
 def convert_cursor(cursor: Cursor) -> str:
+    """attaches namespace prefix to cursor and returns formatted name as string"""
     return create_namespace_prefix(cursor) + cursor.spelling
 
 
@@ -442,9 +419,9 @@ def convert_type(cursor_type: Type) -> str:
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-"""generates standard content for converted header, irrespective of parsed header file, returns string"""
 # noinspection SpellCheckingInspection
 def generate_standard(source_file: str):
+    """generates standard content for converted header, irrespective of parsed header file, returns string"""
     string = "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += 'Source: "{}" */\n'.format(_remove_build_path(source_file))
     string += "\n"
@@ -492,9 +469,8 @@ def generate_standard(source_file: str):
     return string
 
 
-"""generates formatted typedefs for converted header, returns string"""
-# noinspection SpellCheckingInspection
 def generate_typedefs():
+    """generates formatted typedefs for converted header, returns string"""
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "----- Typedefs ---------------------------------------------------------------------------------------------------------\n"
@@ -510,9 +486,8 @@ def generate_typedefs():
     return string
 
 
-"""generates formatted typedefs within interfaces for converted header, returns string"""
-# noinspection SpellCheckingInspection
 def generate_interface_typedefs():
+    """generates formatted typedefs within interfaces for converted header, returns string"""
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "----- Interface typedefs -----------------------------------------------------------------------------------------------\n"
@@ -533,9 +508,8 @@ def generate_interface_typedefs():
     return string
 
 
-"""generates formatted forward declarations for converted header, returns string"""
-# noinspection SpellCheckingInspection
 def generate_forward():
+    """generates formatted forward declarations for converted header, returns string"""
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "----- Interface forward declarations -----------------------------------------------------------------------------------\n"
@@ -555,9 +529,9 @@ def generate_forward():
     return string
 
 
-"""generates further standard content for converted header, returns string"""
 # noinspection SpellCheckingInspection
 def generate_result_values():
+    """generates further standard content for converted header, returns string"""
     string = ""
     string += "\n"
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
@@ -591,9 +565,8 @@ def generate_result_values():
     return string
 
 
-"""generates formatted enums for converted header, returns string"""
-# noinspection SpellCheckingInspection
 def generate_enums():
+    """generates formatted enums for converted header, returns string"""
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "----- Enums ------------------------------------------------------------------------------------------------------------\n"
@@ -613,9 +586,8 @@ def generate_enums():
     return string
 
 
-"""generates formatted unions within structs for converted header, returns string"""
-# noinspection SpellCheckingInspection
 def generate_union(parent):
+    """generates formatted unions within structs for converted header, returns string"""
     string = ""
     if parent in union_parent:
         position = union_parent.index(parent)
@@ -629,9 +601,9 @@ def generate_union(parent):
         string += "    };\n"
     return string
 
-"""generates formatted structs for converted header, executes union generator function, returns string"""
-# noinspection SpellCheckingInspection
+
 def generate_structs():
+    """generates formatted structs for converted header, executes union generator function, returns string"""
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "----- Structs ----------------------------------------------------------------------------------------------------------\n"
@@ -650,9 +622,10 @@ def generate_structs():
     string += "\n"
     return string
 
-"""generates formatted interfaces for converted header, executes method generator function, returns string"""
+
 # noinspection SpellCheckingInspection
 def generate_interface():
+    """generates formatted interfaces for converted header, executes method generator function, returns string"""
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "----- Interfaces -------------------------------------------------------------------------------------------------------\n"
@@ -686,9 +659,8 @@ def generate_interface():
     return string
 
 
-"""generates formatted variables for converted header, returns string"""
-# noinspection SpellCheckingInspection
 def generate_variables():
+    """generates formatted variables for converted header, returns string"""
     string = ""
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "----- Variable declarations --------------------------------------------------------------------------------------------\n"
@@ -701,9 +673,8 @@ def generate_variables():
     return string
 
 
-"""executes individual generator functions, returns finalised string"""
-# noinspection SpellCheckingInspection
 def generate_conversion(source_file: str):
+    """executes individual generator functions, returns finalised string"""
     string = generate_standard(source_file)
     string += generate_forward()
     string += generate_result_values()
@@ -715,9 +686,8 @@ def generate_conversion(source_file: str):
     return string
 
 
-"""prints information about header file, not necessary for generator process"""
-# noinspection SpellCheckingInspection
 def print_info():
+    """prints information about header file, not necessary for generator process"""
     print("Number of enums: {}".format(len(enums)))
     for enum in enums:
         print(" {}".format(enum.name))
@@ -728,13 +698,13 @@ def print_info():
     print()
     print("Number of interfaces: {}".format(len(interfaces)))
     print()
-    for inedex, interface in enumerate(interfaces):
-        print("Interface {}: {}".format(inedex + 1, interface.name))
+    for index, interface in enumerate(interfaces):
+        print("Interface {}: {}".format(index + 1, interface.name))
         print(interface.source_location)
         print("Info:", interface.description)
         print("Methods:")
         for method in interface.methods:
-            match = re.search('SMTG_STDMETHODCALLTYPE\*\s+([^)]+)', method)
+            match = re.search('SMTG_STDMETHODCALLTYPE\\*\\s+([^)]+)', method)
             if match:
                 print(" {}".format(match.group(1)))
         print()
@@ -768,8 +738,8 @@ variable_value = []
 blocklist = ["FUID", "FReleaser"]
 
 
-"""clears all used arrays"""
 def clear_arrays():
+    """clears all used arrays"""
     global interfaces
     global union_return
     global union_parent
