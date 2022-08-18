@@ -487,15 +487,14 @@ def generate_forward():
     string += "\n"
     for forward_struct in structs:
         string += "struct {};\n".format(forward_struct.name)
-    string += "\n"
+    string += "\n\n"
     return string
 
 
 # noinspection SpellCheckingInspection
-def generate_result_values():
+def generate_return_types():
     """generates further standard content for converted header, returns string"""
     string = ""
-    string += "\n"
     string += "/*----------------------------------------------------------------------------------------------------------------------\n"
     string += "----- Result value definitions -----------------------------------------------------------------------------------------\n"
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
@@ -522,8 +521,7 @@ def generate_result_values():
     string += "static const Steinberg_tresult Steinberg_kNotInitialized = 5;\n"
     string += "static const Steinberg_tresult Steinberg_kOutOfMemory = 6;\n"
     string += "#endif\n"
-    string += "\n"
-    string += "\n"
+    string += "\n\n"
     return string
 
 
@@ -540,11 +538,24 @@ def generate_enums():
         string += "\n"
         string += "typedef enum\n"
         string += "{\n"
-        string += ",\n".join(enum.enumerators)
+        string += ",\n".join([f'    {enumerator}' for enumerator in enum.enumerators])
         string += "\n"
         string += "}} {};\n".format(enum.name)
         string += "\n"
     string += "\n"
+    return string
+
+
+def generate_variables():
+    """generates formatted variables for converted header, returns string"""
+    string = ""
+    string += "/*----------------------------------------------------------------------------------------------------------------------\n"
+    string += "----- Variable declarations --------------------------------------------------------------------------------------------\n"
+    string += "----------------------------------------------------------------------------------------------------------------------*/\n"
+    string += "\n"
+    for variable in variables:
+        string += "{}\n".format(variable)
+    string += "\n\n"
     return string
 
 
@@ -571,7 +582,7 @@ def generate_structs():
         string += "/*----------------------------------------------------------------------------------------------------------------------\n"
         string += "{} */\n".format(struct.source_location)
         string += "\n"
-        string += "struct {} {}\n".format(struct.name, "{")
+        string += "struct {}\n{{\n".format(struct.name)
         for field in struct.members:
             string += "    {}\n".format(field)
         string += generate_union(struct.name)
@@ -611,22 +622,9 @@ def generate_interface():
         string += "{} {};\n".format("}", interface.name)
         string += "\n"
         if interface.iid:
-            string += interface.iid
-            string += "\n\n"
+            string += "{}\n".format(interface.iid)
+            string += "\n"
     string += "\n"
-    return string
-
-
-def generate_variables():
-    """generates formatted variables for converted header, returns string"""
-    string = ""
-    string += "/*----------------------------------------------------------------------------------------------------------------------\n"
-    string += "----- Variable declarations --------------------------------------------------------------------------------------------\n"
-    string += "----------------------------------------------------------------------------------------------------------------------*/\n"
-    string += "\n"
-    for variable in variables:
-        string += "{}\n".format(variable)
-    string += "\n\n"
     return string
 
 
@@ -635,7 +633,7 @@ def generate_conversion(source_file: str):
     string = generate_standard(source_file)
     string += generate_typedefs(typedefs, 'Typedefs')
     string += generate_forward()
-    string += generate_result_values()
+    string += generate_return_types()
     string += generate_typedefs(interface_typedefs, 'Interface typedefs')
     string += generate_enums()
     string += generate_variables()
