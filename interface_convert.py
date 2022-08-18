@@ -446,7 +446,7 @@ def convert_type(cursor_type: Type) -> str:
 # noinspection SpellCheckingInspection
 def generate_standard(source_file: str):
     string = "/*----------------------------------------------------------------------------------------------------------------------\n"
-    string += 'Source: "{}"\n'.format(_remove_build_path(source_file))
+    string += 'Source: "{}" */\n'.format(_remove_build_path(source_file))
     string += "\n"
     string += "\n"
     string += "#include <stdint.h>\n"
