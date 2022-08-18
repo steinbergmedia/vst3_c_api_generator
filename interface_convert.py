@@ -37,7 +37,7 @@ recognised otherwise.
 # ----------------------------------------------------------------------------------------------------------------------
 
 # library import statements
-from data_classes import Enum, Container, Interface, Struct
+from data_classes import Enum, Container, Interface, Struct, Variable
 
 import re
 import sys
@@ -211,9 +211,8 @@ def parse_variables(cursor):
     """parses and stores variable definition information"""
     if is_not_kind(cursor, 'VAR_DECL') or is_not_kind(cursor.type, 'TYPEDEF'):
         return
-    variable_return.append(convert_type(cursor.type))
-    variable_name.append(convert_cursor(cursor))
-    variable_value.append(_visit_children(list(cursor.get_children())[-1]))
+    variable_value = _visit_children(list(cursor.get_children())[-1])
+    variables.append(Variable(convert_cursor(cursor), convert_type(cursor.type), variable_value))
 
 
 # noinspection SpellCheckingInspection
@@ -667,10 +666,9 @@ def generate_variables():
     string += "----- Variable declarations --------------------------------------------------------------------------------------------\n"
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
-    for variable in range(len(variable_name)):
-        string += ("static {} {} = {};\n".format(variable_return[variable], variable_name[variable], variable_value[variable]))
-    string += "\n"
-    string += "\n"
+    for variable in variables:
+        string += "{}\n".format(variable)
+    string += "\n\n"
     return string
 
 
@@ -729,9 +727,7 @@ typedef_return = []
 interface_typedef_return = []
 interface_typedef_name = []
 
-variable_return = []
-variable_name = []
-variable_value = []
+variables = Container()
 
 blocklist = ["FUID", "FReleaser"]
 
@@ -742,14 +738,13 @@ def clear_arrays():
     global union_return
     global union_parent
     global union_content
+    global structs
     global enums
     global typedef_name
     global typedef_return
     global interface_typedef_return
     global interface_typedef_name
-    global variable_return
-    global variable_name
-    global variable_value
+    global variables
 
     interfaces.clear()
 
@@ -765,9 +760,7 @@ def clear_arrays():
     interface_typedef_return = []
     interface_typedef_name = []
 
-    variable_return = []
-    variable_name = []
-    variable_value = []
+    variables.clear()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
