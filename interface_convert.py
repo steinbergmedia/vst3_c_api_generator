@@ -597,11 +597,11 @@ def generate_interface():
         string += "{\n"
         for base_class in interface.base_classes:
             string += "    /* methods derived from \"{}\": */\n".format(base_class.name)
-            string += "\n".join(base_class.methods)
+            string += "\n".join([f'    {method}' for method in base_class.methods])
             string += "\n\n"
         if interface.methods:
             string += "    /* methods defined in \"{}\": */\n".format(interface.name)
-            string += "\n".join(interface.methods)
+            string += "\n".join([f'    {method}' for method in interface.methods])
             string += "\n\n"
         string += "{} {}Vtbl;\n".format("}", interface.name)
         string += "\n"

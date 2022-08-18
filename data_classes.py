@@ -81,7 +81,7 @@ class Interface(Base):
 
     # noinspection SpellCheckingInspection
     def add_method(self, name: str, return_type: str, args: List[str]):
-        method = f'    {return_type} (SMTG_STDMETHODCALLTYPE* {name}) (void* thisInterface'
+        method = f'{return_type} (SMTG_STDMETHODCALLTYPE* {name}) (void* thisInterface'
         if args:
             method += ', ' + ', '.join(args)
         method += ');'
