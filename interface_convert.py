@@ -13,11 +13,11 @@ is established, an abstract syntax tree of nested cursor and token objects which
 of the original file in an easily accessible way. These objects each contain data about their inherent
 characteristics which is selectively parsed and stored for later use when recreating the interfaces.
 
-The script is broken up into several smaller functions which can be sorted into tree main categories,
-parsing functions, utility functions and generation functions. Parsing functions interpret the incoming
+The script is broken up into several smaller functions which can be sorted into three main categories,
+parsing functions, utility functions and generator functions. Parsing functions interpret the incoming
 cursor objects and sort the relevant data into various arrays, aided by the utility functions which
 mainly serve to reduce bloat and increase human readability by packaging commonly occurring
-structures into short expressions. The generation functions access the previously stored data
+structures into short expressions. The generator functions access the previously stored data
 to assemble a new C-compatible header file.
 
 The data storage is based on the usage of often multidimensional arrays which each include specific
@@ -438,7 +438,7 @@ def convert_type(cursor_type: Type) -> str:
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# ----- generation functions -------------------------------------------------------------------------------------------
+# ----- generator functions --------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -622,7 +622,7 @@ def generate_union(parent):
         string += "    };\n"
     return string
 
-"""generates formatted structs for converted header, executes union generation function, returns string"""
+"""generates formatted structs for converted header, executes union generator function, returns string"""
 # noinspection SpellCheckingInspection
 def generate_structs():
     string = ""
@@ -643,7 +643,7 @@ def generate_structs():
     string += "\n"
     return string
 
-"""generates formatted interfaces for converted header, executes method generation function, returns string"""
+"""generates formatted interfaces for converted header, executes method generator function, returns string"""
 # noinspection SpellCheckingInspection
 def generate_interface():
     string = ""
@@ -694,7 +694,7 @@ def generate_variables():
     return string
 
 
-"""executes individual generation functions, returns finalised string"""
+"""executes individual generator functions, returns finalised string"""
 # noinspection SpellCheckingInspection
 def generate_conversion(source_file: str):
     string = generate_standard(source_file)
@@ -708,7 +708,7 @@ def generate_conversion(source_file: str):
     return string
 
 
-"""prints information about header file, not necessary for generation process"""
+"""prints information about header file, not necessary for generator process"""
 # noinspection SpellCheckingInspection
 def print_info():
     print("Number of enums: {}".format(len(enums)))
@@ -821,7 +821,7 @@ if __name__ == '__main__':
     include_path = normalise_link(str(Path(sys.argv[1]).parents[2]))
     tu = create_translation_unit(Path(filename[0]), include_path)
 
-    """executes parsing and generation function"""
+    """executes parsing and generator function"""
     parse_header(tu.cursor)
     header_content = generate_conversion(normalise_link(tu.spelling))
 
