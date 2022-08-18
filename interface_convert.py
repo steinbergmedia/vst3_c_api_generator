@@ -37,7 +37,7 @@ recognised otherwise.
 # ----------------------------------------------------------------------------------------------------------------------
 
 # library import statements
-from data_classes import Enum, Container, Interface
+from data_classes import Enum, Container, Interface, Struct
 
 import re
 import sys
@@ -241,9 +241,10 @@ def parse_structs(cursor):
             field = field[:-1] + f'[{struct_args}];'
         fields.append(field)
     if fields:
-        struct_table.append(convert_cursor(cursor))
-        struct_source.append(get_cursor_location(cursor.location))
-        struct_content.append(fields)
+        struct = Struct(convert_cursor(cursor), get_cursor_location(cursor.location))
+        for field in fields:
+            struct.add_member(field)
+        structs.append(struct)
 
 
 def parse_union(parent, cursor):
@@ -478,7 +479,7 @@ def generate_typedefs():
     string += "\n"
     for typedef in range(len(typedef_name)):
         if typedef_return[typedef]:
-            if typedef_return[typedef] in struct_table or typedef_return[typedef] in interfaces\
+            if typedef_return[typedef] in structs or typedef_return[typedef] in interfaces\
                     or typedef_return[typedef] in enums:
                 string += "typedef struct {} {};\n".format(typedef_return[typedef], typedef_name[typedef])
             else:
@@ -495,7 +496,7 @@ def generate_interface_typedefs():
     string += "\n"
     for interface_typedef in range(len(interface_typedef_name)):
         if typedef_return[interface_typedef]:
-            if interface_typedef_return[interface_typedef] in struct_table\
+            if interface_typedef_return[interface_typedef] in structs\
                 or interface_typedef_return[interface_typedef] in interfaces\
                     or interface_typedef_return[interface_typedef] in enums:
                 string += "typedef struct {} {};\n".format(interface_typedef_return[interface_typedef],
@@ -523,8 +524,8 @@ def generate_forward():
     string += "----- Struct forward declarations --------------------------------------------------------------------------------------\n"
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
-    for forward_struct in range(len(struct_table)):
-        string += "struct {};\n".format(struct_table[forward_struct])
+    for forward_struct in structs:
+        string += "struct {};\n".format(forward_struct.name)
     string += "\n"
     return string
 
@@ -593,7 +594,7 @@ def generate_union(parent):
         position = union_parent.index(parent)
         string += "    union {\n"
         for union in range(len(union_content[position])):
-            if union_return[position][union] in struct_table:
+            if union_return[position][union] in structs:
                 string += "        struct " + union_return[position][union] + " "
             else:
                 string += "        " + union_return[position][union] + " "
@@ -609,14 +610,14 @@ def generate_structs():
     string += "----- Structs ----------------------------------------------------------------------------------------------------------\n"
     string += "----------------------------------------------------------------------------------------------------------------------*/\n"
     string += "\n"
-    for struct in range(len(struct_table)):
+    for struct in structs:
         string += "/*----------------------------------------------------------------------------------------------------------------------\n"
-        string += "{} */\n".format(struct_source[struct])
+        string += "{} */\n".format(struct.source_location)
         string += "\n"
-        string += "struct {} {}\n".format(struct_table[struct], "{")
-        for content in range(len(struct_content[struct])):
-            string += "    {}\n".format(struct_content[struct][content])
-        string += generate_union(struct_table[struct])
+        string += "struct {} {}\n".format(struct.name, "{")
+        for field in struct.members:
+            string += "    {}\n".format(field)
+        string += generate_union(struct.name)
         string += "};\n"
         string += "\n"
     string += "\n"
@@ -692,9 +693,9 @@ def print_info():
     for enum in enums:
         print(" {}".format(enum.name))
     print()
-    print("Number of structs: {}".format(len(struct_table)))
-    for i in range(len(struct_table)):
-        print(" {}".format(struct_table[i]))
+    print("Number of structs: {}".format(len(structs)))
+    for struct in structs:
+        print(" {}".format(struct.name))
     print()
     print("Number of interfaces: {}".format(len(interfaces)))
     print()
@@ -720,10 +721,7 @@ union_return = []
 union_parent = []
 union_content = []
 
-struct_table = []
-struct_content = []
-struct_source = []
-
+structs = Container()
 enums = Container()
 
 typedef_name = []
@@ -744,9 +742,6 @@ def clear_arrays():
     global union_return
     global union_parent
     global union_content
-    global struct_table
-    global struct_content
-    global struct_source
     global enums
     global typedef_name
     global typedef_return
@@ -762,10 +757,7 @@ def clear_arrays():
     union_parent = []
     union_content = []
 
-    struct_table = []
-    struct_content = []
-    struct_source = []
-
+    structs.clear()
     enums.clear()
 
     typedef_name = []

@@ -92,3 +92,16 @@ class Interface(Base):
     def set_iid(self, token1, token2, token3, token4):
         self._iid = 'static Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});'.format(self.name, token1, token2,
                                                                                               token3, token4)
+
+
+class Struct(Base):
+    def __init__(self, name: str, source_location: str):
+        super().__init__(name, source_location)
+        self._members = []
+
+    @property
+    def members(self):
+        return self._members
+
+    def add_member(self, member):
+        self._members.append(member)
