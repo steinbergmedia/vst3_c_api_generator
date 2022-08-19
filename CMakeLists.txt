@@ -24,7 +24,7 @@ target_include_directories(Generate_Header PRIVATE ${CMAKE_BINARY_DIR})
 add_executable(Validate_Interfaces validate_interfaces/main.c validate_interfaces/test2.c)
 target_include_directories(Validate_Interfaces PRIVATE ${CMAKE_BINARY_DIR})
 
-set(venv_dir ${CMAKE_CURRENT_SOURCE_DIR}/build/venv)
+set(venv_dir ${CMAKE_BINARY_DIR}/venv)
 execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${venv_dir})
 if(APPLE)
   set(venv_python_exe ${venv_dir}/bin/python)
