@@ -565,7 +565,7 @@ def generate_union(parent):
     string = ""
     if parent in unions:
         union = unions[parent]
-        string += "    union {\n"
+        string += "    union\n    {\n"
         for member in union.members:
             string += "        {};\n".format(member)
         string += "    };\n"
