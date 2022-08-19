@@ -626,8 +626,8 @@ def generate_interface():
         string += "{\n"
         string += "    struct {}Vtbl* lpVtbl;\n".format(interface.name)
         string += "{} {};\n".format("}", interface.name)
-        string += "\n"
         if interface.iid:
+            string += "\n"
             string += "{}\n".format(interface.iid)
         string += "\n"
     return string
