@@ -20,10 +20,11 @@ mainly serve to reduce bloat and increase human readability by packaging commonl
 structures into short expressions. The generator functions access the previously stored data
 to assemble a new C-compatible header file.
 
-The data storage is based on the usage of often multidimensional arrays which each include specific
-information about all structures of a certain type in order of their appearance. To facilitate the
-unambiguous correlation of these pieces of data, the arrays are always kept in sync and later
-accessed using for-loops.
+The data storage is based on component-specific classes which serve to house and return the respective
+information, with one instance being created for each individual component that is parsed. They are
+then arranged in a storage structure which facilitates sequential access to the individual instances of
+each class, the return of class-specific data based on its name or a given extent and provides access
+to all stored names, approximating the functionality of a list.
 
 To function properly, the script must be supplied with the original C++ header file, as well as a
 working directory that houses all other files this header includes, as these will not be
@@ -385,9 +386,9 @@ def convert_cursor(cursor: Cursor) -> str:
     return create_namespace_prefix(cursor) + cursor.spelling
 
 
-#
 # noinspection SpellCheckingInspection
 def convert_type(cursor_type: Type) -> str:
+    """checks for pointers/const and attaches respective prefix or suffix to returned type string"""
     num_pointers = 0
     num_consts = 0
     pointee = cursor_type.get_pointee()
@@ -669,7 +670,7 @@ def print_info():
 
 # ----- Arrays ---------------------------------------------------------------------------------------------------------
 
-"""defines all used arrays"""
+"""defines all used storage structures"""
 interfaces = Container()
 unions = Container()
 structs = Container()
@@ -682,7 +683,7 @@ blocklist = ["FUID", "FReleaser"]
 
 
 def clear_arrays():
-    """clears all used arrays"""
+    """clears all used storage structures"""
     global interfaces
     global unions
     global structs
