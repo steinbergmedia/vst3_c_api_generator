@@ -12,4 +12,4 @@ typedef Steinberg_int32 Steinberg_UnitID;
 typedef Steinberg_int32 Steinberg_ProgramListID;
 
 typedef struct Steinberg_Vst_IContextMenuItem Steinberg_Vst_IContextMenu_Item;
-typedef int Steinberg_Vst_IContextMenu_ItemEvent;
+typedef Steinberg_Vst_MediaTypes Steinberg_Vst_IContextMenu_ItemEvents;

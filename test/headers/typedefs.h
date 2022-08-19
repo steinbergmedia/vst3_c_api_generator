@@ -20,7 +20,7 @@ class IContextMenu : public FUnknown
 {
 public:
 	typedef IContextMenuItem Item;
-	typedef kEvent ItemEvent;
+	typedef MediaTypes ItemEvents;
 
 	static const FUID iid;
 };

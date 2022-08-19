@@ -23,7 +23,7 @@ struct UnitInfo
 
 class IUnitHandler : public FUnknown
 {
-	virtual tresult PLUGIN_API notifyUnitSelection (kEvent event) = 0;
+	virtual tresult PLUGIN_API notifyUnitSelection (MediaTypes mediaType) = 0;
 	virtual tresult PLUGIN_API notifyProgramListChange (ProgramListID listId, int32 programIndex) = 0;
 
 	static const FUID iid;
