@@ -773,6 +773,7 @@ SMTG_EXPORT_SYMBOL Steinberg_IPluginFactory* SMTG_STDMETHODCALLTYPE GetPluginFac
 }
 
 #if __APPLE__
+
 SMTG_EXPORT_SYMBOL Steinberg_TBool bundleEntry (void* bundleRef)
 {
 	return 1;
@@ -781,6 +782,7 @@ SMTG_EXPORT_SYMBOL Steinberg_TBool bundleExit (void* bundleRef)
 {
 	return 1;
 }
+
 #else
 
 SMTG_EXPORT_SYMBOL Steinberg_TBool InitDll ()
@@ -792,4 +794,5 @@ SMTG_EXPORT_SYMBOL Steinberg_TBool ExitDll ()
 {
 	return 1;
 }
-#endif
+
+#endif // __APPLE__
