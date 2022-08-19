@@ -38,7 +38,6 @@ recognised otherwise.
 # ----------------------------------------------------------------------------------------------------------------------
 
 # library import statements
-from data_classes import Enum, Container, Interface, Struct, Variable, Union, Typedef
 
 import re
 import sys
@@ -47,6 +46,7 @@ from pathlib import Path
 from typing import List
 from clang.cindex import SourceLocation, Cursor, Type
 from clang_helpers import create_translation_unit, TokenGroup, is_not_kind, is_valid, is_kind
+from data_classes import Enum, Container, Interface, Struct, Variable, Union, Typedef
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -119,13 +119,13 @@ def parse_typedefs(cursor):
 
 # ----- parse interfaces -----------------------------------------------------------------------------------------------
 
+# noinspection SpellCheckingInspection
 def parse_interfaces(cursor):
     """executes all specific interface-related parse functions and stores information"""
     if is_not_kind(cursor, 'CLASS_DECL') or cursor.spelling in blocklist:
         return
     children = list(cursor.get_children())
     if not children:
-        # this is only a forward declaration
         return
     interface = Interface(convert_cursor(cursor), get_cursor_location(cursor.location), cursor.brief_comment)
     for cursor_child in children:
@@ -148,6 +148,7 @@ def parse_inheritance(cursor: Cursor, interface: Interface):
 
 # ----- parse IIDs -----------------------------------------------------------------------------------------------------
 
+# noinspection SpellCheckingInspection
 def parse_iid(cursor: Cursor, namespace: str):
     """parses and stores IIDs of interfaces"""
     if is_not_kind(cursor, 'VAR_DECL') or not cursor.spelling.endswith('_iid'):
@@ -198,7 +199,7 @@ def _convert_method_args_name(source: str) -> str:
 
 # ----- specific parse functions ---------------------------------------------------------------------------------------
 
-
+# noinspection SpellCheckingInspection
 def parse_variables(cursor):
     """parses and stores variable definition information"""
     if is_not_kind(cursor, 'VAR_DECL') or is_not_kind(cursor.type, 'TYPEDEF'):
@@ -238,6 +239,7 @@ def parse_structs(cursor):
         structs.append(struct)
 
 
+# noinspection SpellCheckingInspection
 def parse_union(parent, cursor):
     """parses and stores union information within a struct"""
     if is_not_kind(cursor, 'UNION_DECL') or cursor.spelling in blocklist:
@@ -255,6 +257,7 @@ def parse_union(parent, cursor):
     unions.append(union)
 
 
+# noinspection SpellCheckingInspection
 def parse_enum(cursor: Cursor) -> bool:
     """parses and stores enum information"""
     if is_not_kind(cursor, 'ENUM_DECL'):
@@ -276,6 +279,7 @@ def parse_enum(cursor: Cursor) -> bool:
 # ----- utility functions ----------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
+
 def _get_binary_operator(cursor: Cursor, children: List[Cursor]) -> str:
     """returns token spelling after passing extent of first cursor child"""
     start = children[0].extent.end.offset
@@ -286,6 +290,7 @@ def _get_binary_operator(cursor: Cursor, children: List[Cursor]) -> str:
     return ''
 
 
+# noinspection SpellCheckingInspection
 def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
     """analyses cursor children, formats and returns string based on CursorKind"""
     children = list(cursor.get_children())
@@ -624,8 +629,7 @@ def generate_interface():
         string += "\n"
         if interface.iid:
             string += "{}\n".format(interface.iid)
-            string += "\n"
-    string += "\n"
+        string += "\n"
     return string
 
 
