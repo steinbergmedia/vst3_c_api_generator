@@ -733,7 +733,7 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE myGetClassInfo2 (void* thisInterface,
 	return Steinberg_kResultTrue;
 }
 
-static const Steinberg_IPluginFactory2Vtbl myPluginFactoryVtbl = {
+static Steinberg_IPluginFactory2Vtbl myPluginFactoryVtbl = {
     myQueryInterface, myAddRef,       myRelease,        myGetFactoryInfo,
     myCountClasses,   myGetClassInfo, myCreateInstance, myGetClassInfo2};
 
