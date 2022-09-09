@@ -1,51 +1,102 @@
 cmake_minimum_required(VERSION 3.15.0)
 
+###############################################################################################
+## Default Options
+###############################################################################################
+
+set(SMTG_PLUGINTERFACES_REPO_DEFAULT https://stash.steinberg-intra.net/scm/vstsdk/vst3_pluginterfaces.git)
+set(SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT v3.7.5_build_44)
+
+###############################################################################################
+## Options
+###############################################################################################
+
+set(SMTG_PLUGINTERFACES_REPO
+	${SMTG_PLUGINTERFACES_REPO_DEFAULT}
+	CACHE STRING "The VST3 pluginterfaces (API) repository"
+)
+set(SMTG_PLUGINTERFACES_GIT_TAG
+	${SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT}
+	CACHE STRING "The VST3 pluginterfaces (API) git tag"
+)
+
+###############################################################################################
+## Fetch the VST API repository
+###############################################################################################
+
 include(FetchContent)
 
 FetchContent_Declare(
-pluginterfaces
-GIT_REPOSITORY https://stash.steinberg-intra.net/scm/vstsdk/vst3_pluginterfaces.git
-GIT_TAG v3.7.5_build_44
-SOURCE_DIR "${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
+	pluginterfaces
+	GIT_REPOSITORY		${SMTG_PLUGINTERFACES_REPO}
+	GIT_TAG				${SMTG_PLUGINTERFACES_GIT_TAG}
+	GIT_SHALLOW			TRUE
+	GIT_PROGRESS		TRUE
+	SOURCE_DIR			"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
 )
-FetchContent_GetProperties(pluginterfaces)
-if(NOT pluginterfaces_POPULATED)
-  # Fetch the content using previously declared details
-  FetchContent_Populate(pluginterfaces)
-endif()
 
+message(STATUS "Git clone pluginterfaces")
+FetchContent_Populate(pluginterfaces)
+message(STATUS "Git clone pluginterfaces done.")
+
+###############################################################################################
+## Prepare Python
+###############################################################################################
 find_package (Python3)
 
-project(Convert_Interfaces_To_C)
-
-add_executable(Generate_Header generate_header/generate_header.c)
-target_include_directories(Generate_Header PRIVATE ${CMAKE_BINARY_DIR})
-
-add_executable(Validate_Interfaces validate_interfaces/main.c validate_interfaces/test2.c)
-target_include_directories(Validate_Interfaces PRIVATE ${CMAKE_BINARY_DIR})
-
 set(venv_dir ${CMAKE_BINARY_DIR}/venv)
+message(STATUS "Execute: ${Python3_EXECUTABLE} -m venv ${venv_dir}")
 execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${venv_dir})
 if(APPLE)
-  set(venv_python_exe ${venv_dir}/bin/python)
+	set(venv_python_exe ${venv_dir}/bin/python)
 elseif(WIN32)
-  set(venv_python_exe ${venv_dir}/Scripts/python.exe)
+	set(venv_python_exe ${venv_dir}/Scripts/python.exe)
 endif()
 
+message(STATUS "Execute: ${venv_python_exe} -m pip install --upgrade pip")
 execute_process(COMMAND ${venv_python_exe} -m pip install --upgrade pip)
 
 foreach(library libclang clang jinja2)
-  execute_process(COMMAND ${venv_python_exe} -m pip install ${library})
+	message(STATUS "Execute: ${venv_python_exe} -m pip install ${library}")
+	execute_process(COMMAND ${venv_python_exe} -m pip install ${library})
 endforeach()
 
-add_custom_command(TARGET Generate_Header
-                    PRE_BUILD
-                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                    COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}
-                    COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
-                    POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
-                    )
+###############################################################################################
+## Project
+###############################################################################################
+
+project(
+	Convert_Interfaces_To_C
+	VERSION 1.0.0
+)
+
+###############################################################################################
+## Generate Interface Target
+###############################################################################################
+
+add_executable(Generate_Header generate_header/generate_header.c generate_header/scripts)
+target_include_directories(Generate_Header PRIVATE ${CMAKE_BINARY_DIR})
+
+add_custom_command(
+	TARGET Generate_Header
+	PRE_BUILD
+	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}
+	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
+)
+
+###############################################################################################
+## Validate Interface Target
+###############################################################################################
+
+add_executable(Validate_Interfaces validate_interfaces/main.c validate_interfaces/test2.c "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
+target_include_directories(Validate_Interfaces PRIVATE ${CMAKE_BINARY_DIR})
+
+###############################################################################################
+## Example AGain Target
+###############################################################################################
 
 add_library(C_Gain_Example MODULE c_gain_example/factory.c)
 target_include_directories(C_Gain_Example PRIVATE ${CMAKE_BINARY_DIR})
