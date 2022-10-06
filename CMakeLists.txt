@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.15.0)
 ###############################################################################################
 
 set(SMTG_PLUGINTERFACES_REPO_DEFAULT https://stash.steinberg-intra.net/scm/vstsdk/vst3_pluginterfaces.git)
-set(SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT v3.7.5_build_44)
+set(SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT HEAD) # v3.7.5_build_44
 
 ###############################################################################################
 ## Options
