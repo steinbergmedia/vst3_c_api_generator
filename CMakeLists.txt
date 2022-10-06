@@ -82,7 +82,7 @@ add_custom_command(
 	PRE_BUILD
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}
-	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
+	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h "${CMAKE_SYSTEM_INCLUDE_PATH}"
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
 )
