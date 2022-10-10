@@ -9,18 +9,18 @@ class TestConversion(unittest.TestCase):
     def setUp(self):
         clear_arrays()
 
-    @staticmethod
-    def _convert_header(header_name: str) -> str:
-        header_path = Path('headers', f'{header_name}.h').absolute()
+    @classmethod
+    def _convert_header(cls, header_name: str) -> str:
+        header_path = (cls._get_headers_directory() / f'{header_name}.h').absolute()
         translation_unit = create_translation_unit(header_path, str(header_path.parents[2]))
         parse_header(translation_unit.cursor)
         result = generate_conversion(normalise_link(translation_unit.spelling))
         translation_unit.reparse(unsaved_files=[(header_path, '')])
         return result
 
-    @staticmethod
-    def _load_expectation(header_name: str) -> str:
-        expectation_path = Path('headers', f'{header_name}_expected.h')
+    @classmethod
+    def _load_expectation(cls, header_name: str) -> str:
+        expectation_path = cls._get_headers_directory() / f'{header_name}_expected.h'
         with expectation_path.open() as f:
             return f.read()
 
@@ -34,6 +34,10 @@ class TestConversion(unittest.TestCase):
         if match:
             return re.sub(r'.?/\*-----.*?\*/.', '', match.group(1), flags=re.DOTALL).strip()
         return ''
+
+    @staticmethod
+    def _get_headers_directory():
+        return Path(__file__).parent / 'headers'
 
     def test_variables(self):
         header_name = 'variables'
