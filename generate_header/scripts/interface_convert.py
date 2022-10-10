@@ -298,6 +298,10 @@ def _get_binary_operator(cursor: Cursor, children: List[Cursor]) -> str:
 # noinspection SpellCheckingInspection
 def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
     """analyses cursor children, formats and returns string based on CursorKind"""
+    if not list(cursor.get_tokens()):
+        cursor_tokens = get_token_spellings_from_extent(cursor)
+        if len(cursor_tokens) == 1:
+            return cursor_tokens[0]
     children = list(cursor.get_children())
     if is_kind(cursor, 'BINARY_OPERATOR'):
         operator = _get_binary_operator(cursor, children)
@@ -314,11 +318,7 @@ def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
         else:
             return convert_cursor(cursor)
     elif is_kind(cursor, 'UNEXPOSED_EXPR') or is_kind(cursor, 'ENUM_CONSTANT_DECL'):
-        if not list(cursor.get_tokens()):
-            cursor_tokens = get_token_spellings_from_extent(cursor)
-            if len(cursor_tokens) == 1:
-                return cursor_tokens[0]
-        elif children:
+        if children:
             return _visit_children(children[0], use_definitions)
         return ''
     elif is_kind(cursor, 'VAR_DECL'):
