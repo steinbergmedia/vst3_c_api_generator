@@ -283,9 +283,14 @@ def parse_enum(cursor: Cursor) -> bool:
 
 def _get_binary_operator(cursor: Cursor, children: List[Cursor]) -> str:
     """returns token spelling after passing extent of first cursor child"""
-    start = children[0].extent.end.offset
+    child_extent_length = children[0].extent.end.offset - children[0].extent.start.offset
+    child_tokens = list(children[0].get_tokens())
+    if not child_tokens:
+        return ''
+        #raise Exception("No tokens found")
+    child_extent_end = child_tokens[0].extent.start.offset + child_extent_length
     for token in cursor.get_tokens():
-        if token.extent.start.offset < start:
+        if token.extent.start.offset < child_extent_end:
             continue
         return token.spelling
     return ''
