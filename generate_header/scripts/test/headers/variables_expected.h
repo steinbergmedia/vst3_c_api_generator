@@ -1,4 +1,6 @@
 static const Steinberg_CString Steinberg_Vst_Attributes_kStyle = "style";
+static const Steinberg_int32 Steinberg_Vst_Attributes_kMaxInt = INT_MAX;
+static const Steinberg_int32 Steinberg_Vst_Attributes_kMinInt = INT_MIN;
 static const Steinberg_UnitID Steinberg_Vst_kNoParentUnitId = -1;
 static const Steinberg_Vst_Speaker Steinberg_Vst_kSpeakerL = 1 << 0;
 static const Steinberg_Vst_Speaker Steinberg_Vst_kSpeakerR = 1 << 1;

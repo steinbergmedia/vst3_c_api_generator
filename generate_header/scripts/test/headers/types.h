@@ -24,4 +24,7 @@ struct PClassInfoW;
 
 #define PLUGIN_API
 
+#define INT_MAX 2147483647
+#define INT_MIN (-2147483647 - 1)
+
 }

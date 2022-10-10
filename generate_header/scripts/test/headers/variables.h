@@ -19,6 +19,8 @@ namespace Vst {
 namespace Attributes
 {
 	const CString kStyle = ATTR_STYLE;
+	static const int32 kMaxInt = INT_MAX;
+	static const int32 kMinInt = INT_MIN;
 };
 
 static const UnitID kNoParentUnitId = -1;

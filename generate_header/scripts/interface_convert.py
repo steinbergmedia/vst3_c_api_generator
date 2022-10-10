@@ -153,7 +153,7 @@ def parse_iid(cursor: Cursor, namespace: str):
     """parses and stores IIDs of interfaces"""
     if is_not_kind(cursor, 'VAR_DECL') or not cursor.spelling.endswith('_iid'):
         return
-    id_tokens = get_id_token_spellings_from_extent(cursor)
+    id_tokens = get_token_spellings_from_extent(cursor)
     interface_name = convert_namespace(namespace)
     if interface_name:
         interface_name += '_'
@@ -162,7 +162,7 @@ def parse_iid(cursor: Cursor, namespace: str):
         interfaces[interface_name].set_iid(id_tokens[4], id_tokens[6], id_tokens[8], id_tokens[10])
 
 
-def get_id_token_spellings_from_extent(cursor: Cursor) -> List[str]:
+def get_token_spellings_from_extent(cursor: Cursor) -> List[str]:
     """uses tokens to return IID spellings as string"""
     cursor_tu = cursor.translation_unit
     extent = cursor_tu.get_extent(cursor.location.file.name, [cursor.extent.start.offset, cursor.extent.end.offset])
@@ -314,7 +314,11 @@ def _visit_children(cursor: Cursor, use_definitions: bool = True) -> str:
         else:
             return convert_cursor(cursor)
     elif is_kind(cursor, 'UNEXPOSED_EXPR') or is_kind(cursor, 'ENUM_CONSTANT_DECL'):
-        if children:
+        if not list(cursor.get_tokens()):
+            cursor_tokens = get_token_spellings_from_extent(cursor)
+            if len(cursor_tokens) == 1:
+                return cursor_tokens[0]
+        elif children:
             return _visit_children(children[0], use_definitions)
         return ''
     elif is_kind(cursor, 'VAR_DECL'):
