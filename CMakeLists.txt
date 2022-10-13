@@ -98,7 +98,7 @@ target_include_directories(Validate_Interfaces PRIVATE ${CMAKE_BINARY_DIR})
 ## Example AGain Target
 ###############################################################################################
 
-add_library(C_Gain_Example MODULE c_gain_example/factory.c)
+add_library(C_Gain_Example MODULE c_gain_example/cgain.c)
 target_include_directories(C_Gain_Example PRIVATE ${CMAKE_BINARY_DIR})
 
 if(APPLE)
