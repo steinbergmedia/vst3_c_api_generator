@@ -1,4 +1,4 @@
-#include "test_header.h"
+#include "vst3_c_api.h"
 
 void func ()
 {

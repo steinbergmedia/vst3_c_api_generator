@@ -744,7 +744,7 @@ if __name__ == '__main__':
 
     """outputs generated header as new header file"""
     if write_header:
-        header_path = "test_header.h"
+        header_path = "vst3_c_api.h"
         with open(header_path, 'w') as h:
             h.write(header_content)
 

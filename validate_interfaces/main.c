@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include "test_header.h"
+#include "vst3_c_api.h"
 
 
 int main ()
