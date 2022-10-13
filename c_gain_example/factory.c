@@ -6,9 +6,6 @@
 // Description : <#Description#>
 //------------------------------------------------------------------------
 
-#include <stdint.h>
-typedef int32_t Vst_ParamID;
-
 #include <math.h>
 #include <memory.h>
 #include <stdio.h>
