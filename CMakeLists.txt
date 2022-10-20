@@ -66,7 +66,7 @@ endforeach()
 ###############################################################################################
 
 project(
-	Convert_Interfaces_To_C
+	VST3_C_API_GENERATOR
 	VERSION 1.0.0
 )
 
@@ -91,8 +91,17 @@ add_custom_command(
 ## Validate Interface Target
 ###############################################################################################
 
-add_executable(Validate_Interfaces validate_interfaces/main.c validate_interfaces/test2.c "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
-target_include_directories(Validate_Interfaces PRIVATE ${CMAKE_BINARY_DIR})
+add_executable(Validate_Interfaces 
+	validate_interfaces/main.c
+	validate_interfaces/test2.c
+	validate_interfaces/cxx.cpp
+	"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
+)
+target_include_directories(Validate_Interfaces PRIVATE "${CMAKE_BINARY_DIR}" "${pluginterfaces_SOURCE_DIR}/..")
+target_compile_features(Validate_Interfaces
+    PUBLIC
+        cxx_std_17
+)
 
 ###############################################################################################
 ## Example AGain Target
