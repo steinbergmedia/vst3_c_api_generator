@@ -15,6 +15,7 @@ The `c_gain_example` folder contains a simple VST3 Plug-in written in C
 To build it use cmake:
 
 	mkdir build
+	cd build
 	cmake ../
 	cmake --build .
 
