@@ -162,19 +162,19 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface (void* th
 	if (compare_iid (Steinberg_Vst_IConnectionPoint_iid, iid))
 	{
 		AGainProcessor_AddRef (thisInterface);
-		*obj = (void*)((int64_t)instance + 8);
+		*obj = (void*)((int64_t)instance + pointerOffset);
 		return Steinberg_kResultTrue;
 	}
 	if (compare_iid (Steinberg_Vst_IAudioProcessor_iid, iid))
 	{
 		AGainProcessor_AddRef (thisInterface);
-		*obj = (void*)((int64_t)instance + 16);
+		*obj = (void*)((int64_t)instance + (pointerOffset * 2));
 		return Steinberg_kResultTrue;
 	}
 	if (compare_iid (Steinberg_Vst_IProcessContextRequirements_iid, iid))
 	{
 		AGainProcessor_AddRef (thisInterface);
-		*obj = (void*)((int64_t)instance + 24);
+		*obj = (void*)((int64_t)instance + (pointerOffset * 3));
 		return Steinberg_kResultTrue;
 	}
 	*obj = NULL;
@@ -505,13 +505,13 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface (void* t
 	if (compare_iid (Steinberg_Vst_IConnectionPoint_iid, iid))
 	{
 		AGainController_AddRef (thisInterface);
-		*obj = (void*)((int64_t)instance + 8);
+		*obj = (void*)((int64_t)instance + pointerOffset);
 		return Steinberg_kResultTrue;
 	}
 	if (compare_iid (Steinberg_Vst_IEditController2_iid, iid))
 	{
 		AGainController_AddRef (thisInterface);
-		*obj = (void*)((int64_t)instance + 16);
+		*obj = (void*)((int64_t)instance + (pointerOffset * 2));
 		return Steinberg_kResultTrue;
 	}
 	*obj = NULL;
