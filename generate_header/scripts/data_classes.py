@@ -99,8 +99,8 @@ class Interface(Base):
         self._base_classes.append(base_interface)
 
     def set_iid(self, token1, token2, token3, token4):
-        self._iid = 'static Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});'.format(self.name, token1, token2,
-                                                                                              token3, token4)
+        self._iid = 'static const Steinberg_TUID {}_iid = SMTG_INLINE_UID ({}, {}, {}, {});'.format(self.name, token1, token2,
+                                                                                                    token3, token4)
 
 
 class Struct(Base):
