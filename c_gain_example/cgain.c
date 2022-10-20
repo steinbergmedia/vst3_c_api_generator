@@ -1,9 +1,9 @@
 //------------------------------------------------------------------------
 // Flags       : clang-format SMTGSequencer
-// Project     : <#Project#>
-// Filename    : <#FileName#>
+// Project     : VST3 C API Generator
+// Filename    : cgain.c
 // Created by  : nzorn, 07/2022
-// Description : <#Description#>
+// Description : Example VST3 Plug-in using the C API
 //------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
