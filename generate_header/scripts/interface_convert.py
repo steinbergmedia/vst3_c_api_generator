@@ -451,7 +451,7 @@ def generate_standard(source_file: str):
     string += "#include <stdint.h>\n"
     string += "\n"
     string += "#if _WIN32\n"
-    string += "#define SMTG_STDMETHODCALLTYPE\n"
+    string += "#define SMTG_STDMETHODCALLTYPE __stdcall\n"
     string += "#define SMTG_COM_COMPATIBLE 1\n"
     string += "#else\n"
     string += "#define SMTG_STDMETHODCALLTYPE\n"
