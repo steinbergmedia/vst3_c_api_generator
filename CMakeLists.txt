@@ -104,21 +104,21 @@ target_compile_features(Validate_Interfaces
 )
 
 ###############################################################################################
-## Example AGain Target
+## CGain Target
 ###############################################################################################
 
-add_library(C_Gain_Example MODULE c_gain_example/cgain.c)
-target_include_directories(C_Gain_Example PRIVATE ${CMAKE_BINARY_DIR})
+add_library(C_Gain_Test MODULE c_gain_test_plugin/cgain.c)
+target_include_directories(C_Gain_Test PRIVATE ${CMAKE_BINARY_DIR})
 
 if(APPLE)
-	set_target_properties(C_Gain_Example
+	set_target_properties(C_Gain_Test
 		PROPERTIES
 			BUNDLE TRUE
 			XCODE_ATTRIBUTE_GENERATE_PKGINFO_FILE YES
 			XCODE_ATTRIBUTE_WRAPPER_EXTENSION vst3
 	)
 else()
-    set_target_properties(C_Gain_Example
+    set_target_properties(C_Gain_Test
         PROPERTIES
             SUFFIX ".vst3")
 endif()
