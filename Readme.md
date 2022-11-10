@@ -8,7 +8,7 @@ The `generate_header` folder contains the scripts to create the `vst3_c_api.h` h
 
 The `validate_interafaces` folder contains c and c++ source files to validate the generated header
 
-The `c_gain_example` folder contains a simple VST3 Plug-in written in C
+The `c_gain_test_plugin` folder contains a simple VST3 Plug-in written in C
 
 ---
 
