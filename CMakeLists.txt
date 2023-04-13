@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.15.0)
 ## Default Options
 ###############################################################################################
 
+set(SMTG_PLUGINTERFACES_REPO_TYPE_DEFAULT git)
 set(SMTG_PLUGINTERFACES_REPO_DEFAULT https://github.com/steinbergmedia/vst3_pluginterfaces.git)
 set(SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT HEAD)
 
@@ -11,6 +12,10 @@ set(SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT HEAD)
 ## Options
 ###############################################################################################
 
+set(SMTG_PLUGINTERFACES_REPO_TYPE
+	${SMTG_PLUGINTERFACES_REPO_TYPE_DEFAULT}
+	CACHE STRING "The VST3 pluginterfaces (API) repository type (git or url)"
+)
 set(SMTG_PLUGINTERFACES_REPO
 	${SMTG_PLUGINTERFACES_REPO_DEFAULT}
 	CACHE STRING "The VST3 pluginterfaces (API) repository"
@@ -26,14 +31,22 @@ set(SMTG_PLUGINTERFACES_GIT_TAG
 
 include(FetchContent)
 
-FetchContent_Declare(
-	pluginterfaces
-	GIT_REPOSITORY		${SMTG_PLUGINTERFACES_REPO}
-	GIT_TAG				${SMTG_PLUGINTERFACES_GIT_TAG}
-	GIT_SHALLOW			TRUE
-	GIT_PROGRESS		TRUE
-	SOURCE_DIR			"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
-)
+if(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL git)
+	FetchContent_Declare(
+		pluginterfaces
+		GIT_REPOSITORY		${SMTG_PLUGINTERFACES_REPO}
+		GIT_TAG				${SMTG_PLUGINTERFACES_GIT_TAG}
+		GIT_SHALLOW			TRUE
+		GIT_PROGRESS		TRUE
+		SOURCE_DIR			"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
+	)
+elseif(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL url)
+	FetchContent_Declare(
+		pluginterfaces
+		URL					${SMTG_PLUGINTERFACES_REPO}
+		SOURCE_DIR			"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
+	)
+endif()
 
 message(STATUS "Git clone pluginterfaces")
 FetchContent_Populate(pluginterfaces)
