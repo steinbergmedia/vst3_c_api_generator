@@ -14,7 +14,7 @@ set(SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT HEAD)
 
 set(SMTG_PLUGINTERFACES_REPO_TYPE
 	${SMTG_PLUGINTERFACES_REPO_TYPE_DEFAULT}
-	CACHE STRING "The VST3 pluginterfaces (API) repository type (git or url)"
+	CACHE STRING "The VST3 pluginterfaces (API) repository type (git or file)"
 )
 set(SMTG_PLUGINTERFACES_REPO
 	${SMTG_PLUGINTERFACES_REPO_DEFAULT}
@@ -29,9 +29,9 @@ set(SMTG_PLUGINTERFACES_GIT_TAG
 ## Fetch the VST API repository
 ###############################################################################################
 
-include(FetchContent)
-
 if(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL git)
+	include(FetchContent)
+
 	FetchContent_Declare(
 		pluginterfaces
 		GIT_REPOSITORY		${SMTG_PLUGINTERFACES_REPO}
@@ -40,17 +40,16 @@ if(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL git)
 		GIT_PROGRESS		TRUE
 		SOURCE_DIR			"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
 	)
-elseif(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL url)
-	FetchContent_Declare(
-		pluginterfaces
-		URL					${SMTG_PLUGINTERFACES_REPO}
-		SOURCE_DIR			"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
-	)
-endif()
+	message(STATUS "Git clone pluginterfaces")
+	FetchContent_Populate(pluginterfaces)
+	message(STATUS "Git clone pluginterfaces done.")
 
-message(STATUS "Git clone pluginterfaces")
-FetchContent_Populate(pluginterfaces)
-message(STATUS "Git clone pluginterfaces done.")
+elseif(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL file)
+	execute_process(COMMAND /bin/cp -R ${SMTG_PLUGINTERFACES_REPO} "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
+	set(pluginterfaces_SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/pluginterfaces)
+else()
+	message(FATAL_ERROR "Wrong repo type")
+endif()
 
 ###############################################################################################
 ## Prepare Python
