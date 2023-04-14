@@ -45,6 +45,7 @@ if(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL git)
 	message(STATUS "Git clone pluginterfaces done.")
 
 elseif(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL file)
+	execute_process(COMMAND /bin/rm -rf "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
 	execute_process(COMMAND /bin/cp -R ${SMTG_PLUGINTERFACES_REPO} "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
 	set(pluginterfaces_SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/pluginterfaces)
 else()
