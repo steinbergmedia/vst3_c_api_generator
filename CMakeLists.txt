@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.15.0)
 ## Default Options
 ###############################################################################################
 
+set(SMTG_PLUGINTERFACES_REPO_TYPE_DEFAULT git)
 set(SMTG_PLUGINTERFACES_REPO_DEFAULT https://github.com/steinbergmedia/vst3_pluginterfaces.git)
 set(SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT HEAD)
 
@@ -11,6 +12,10 @@ set(SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT HEAD)
 ## Options
 ###############################################################################################
 
+set(SMTG_PLUGINTERFACES_REPO_TYPE
+	${SMTG_PLUGINTERFACES_REPO_TYPE_DEFAULT}
+	CACHE STRING "The VST3 pluginterfaces (API) repository type (git or file)"
+)
 set(SMTG_PLUGINTERFACES_REPO
 	${SMTG_PLUGINTERFACES_REPO_DEFAULT}
 	CACHE STRING "The VST3 pluginterfaces (API) repository"
@@ -24,20 +29,28 @@ set(SMTG_PLUGINTERFACES_GIT_TAG
 ## Fetch the VST API repository
 ###############################################################################################
 
-include(FetchContent)
+if(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL git)
+	include(FetchContent)
 
-FetchContent_Declare(
-	pluginterfaces
-	GIT_REPOSITORY		${SMTG_PLUGINTERFACES_REPO}
-	GIT_TAG				${SMTG_PLUGINTERFACES_GIT_TAG}
-	GIT_SHALLOW			TRUE
-	GIT_PROGRESS		TRUE
-	SOURCE_DIR			"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
-)
+	FetchContent_Declare(
+		pluginterfaces
+		GIT_REPOSITORY		${SMTG_PLUGINTERFACES_REPO}
+		GIT_TAG				${SMTG_PLUGINTERFACES_GIT_TAG}
+		GIT_SHALLOW			TRUE
+		GIT_PROGRESS		TRUE
+		SOURCE_DIR			"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
+	)
+	message(STATUS "Git clone pluginterfaces")
+	FetchContent_Populate(pluginterfaces)
+	message(STATUS "Git clone pluginterfaces done.")
 
-message(STATUS "Git clone pluginterfaces")
-FetchContent_Populate(pluginterfaces)
-message(STATUS "Git clone pluginterfaces done.")
+elseif(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL file)
+	execute_process(COMMAND /bin/rm -rf "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
+	execute_process(COMMAND /bin/cp -R ${SMTG_PLUGINTERFACES_REPO} "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
+	set(pluginterfaces_SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/pluginterfaces)
+else()
+	message(FATAL_ERROR "Wrong repo type")
+endif()
 
 ###############################################################################################
 ## Prepare Python
@@ -122,3 +135,5 @@ else()
         PROPERTIES
             SUFFIX ".vst3")
 endif()
+
+add_dependencies(C_Gain_Test Generate_Header)
