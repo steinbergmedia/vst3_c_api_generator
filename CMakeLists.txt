@@ -116,6 +116,7 @@ target_compile_features(Validate_Interfaces
     PUBLIC
         cxx_std_17
 )
+add_dependencies(Validate_Interfaces Generate_Header)
 
 ###############################################################################################
 ## CGain Target
@@ -137,4 +138,4 @@ else()
             SUFFIX ".vst3")
 endif()
 
-add_dependencies(C_Gain_Test Generate_Header)
+add_dependencies(C_Gain_Test Validate_Interfaces)
