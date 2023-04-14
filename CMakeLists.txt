@@ -134,3 +134,5 @@ else()
         PROPERTIES
             SUFFIX ".vst3")
 endif()
+
+add_dependencies(C_Gain_Test Generate_Header)
