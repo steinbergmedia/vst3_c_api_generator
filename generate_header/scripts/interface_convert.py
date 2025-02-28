@@ -49,7 +49,7 @@ recognised otherwise.
 
 import re
 import sys
-from optparse import OptionParser
+from argparse import ArgumentParser, REMAINDER
 from pathlib import Path
 from typing import List
 from clang.cindex import SourceLocation, Cursor, Type
@@ -745,13 +745,16 @@ if __name__ == '__main__':
     write_header = True
 
     """establishes translation unit"""
-    parser = OptionParser("usage: {filename} [clang-args*]")
-    (opts, filename) = parser.parse_args()
+    parser = ArgumentParser(description='usage: {filename} [clang-args*]')
+    parser.add_argument('filename', type=str)
+    parser.add_argument('clang_args', nargs=REMAINDER)
+    args = parser.parse_args()
+    filename = args.filename
     if not filename:
         print('No filename was specified!')
         exit(1)
     include_path = normalise_link(str(Path(sys.argv[1]).parents[2]))
-    tu = create_translation_unit(Path(filename[0]), include_path)
+    tu = create_translation_unit(Path(filename), include_path, args.clang_args)
 
     """executes parsing and generator function"""
     parse_header(tu.cursor)

@@ -1,12 +1,13 @@
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # This file is part of a Steinberg SDK. It is subject to the license terms
 # in the LICENSE file found in the top-level directory of this distribution
 # and at www.steinberg.net/sdklicenses. 
 # No part of the SDK, including this file, may be copied, modified, propagated,
 # or distributed except according to the terms contained in the LICENSE file.
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 from pathlib import Path
+from typing import List
 
 import clang
 from clang.cindex import CursorKind, TypeKind, Cursor, Type
@@ -21,9 +22,12 @@ def set_library_path():
     clang.cindex.Config.set_library_path(str(libclang_path))
 
 
-def create_translation_unit(header_path: Path, include_path: str):
+def create_translation_unit(header_path: Path, include_path: str, clang_args: [List[str]] = None) -> Type:
     set_library_path()
-    return clang.cindex.Index.create().parse(header_path, ['-I', include_path, '-x', 'c++-header'])
+    args = ['-I', include_path, '-x', 'c++-header']
+    if clang_args:
+        args.extend(clang_args)
+    return clang.cindex.Index.create().parse(header_path, args)
 
 
 def is_kind(cursor_or_type: [Cursor, Type], kind: str) -> bool:
