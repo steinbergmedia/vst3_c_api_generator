@@ -11,7 +11,7 @@ typedef struct Steinberg_FUnknown
     struct Steinberg_FUnknownVtbl* lpVtbl;
 } Steinberg_FUnknown;
 
-static Steinberg_TUID Steinberg_FUnknown_iid = SMTG_INLINE_UID (0x00000000, 0x00000000, 0xC0000000, 0x00000046);
+static const Steinberg_TUID Steinberg_FUnknown_iid = SMTG_INLINE_UID (0x00000000, 0x00000000, 0xC0000000, 0x00000046);
 
 typedef struct Steinberg_IPluginFactoryVtbl
 {
@@ -31,7 +31,7 @@ typedef struct Steinberg_IPluginFactory
     struct Steinberg_IPluginFactoryVtbl* lpVtbl;
 } Steinberg_IPluginFactory;
 
-static Steinberg_TUID Steinberg_IPluginFactory_iid = SMTG_INLINE_UID (0x7A4D811C, 0x52114A1F, 0xAED9D2EE, 0x0B43BF9F);
+static const Steinberg_TUID Steinberg_IPluginFactory_iid = SMTG_INLINE_UID (0x7A4D811C, 0x52114A1F, 0xAED9D2EE, 0x0B43BF9F);
 
 typedef struct Steinberg_IPluginFactory2Vtbl
 {
@@ -54,7 +54,7 @@ typedef struct Steinberg_IPluginFactory2
     struct Steinberg_IPluginFactory2Vtbl* lpVtbl;
 } Steinberg_IPluginFactory2;
 
-static Steinberg_TUID Steinberg_IPluginFactory2_iid = SMTG_INLINE_UID (0x0007B650, 0xF24B4C0B, 0xA464EDB9, 0xF00B2ABB);
+static const Steinberg_TUID Steinberg_IPluginFactory2_iid = SMTG_INLINE_UID (0x0007B650, 0xF24B4C0B, 0xA464EDB9, 0xF00B2ABB);
 
 typedef struct Steinberg_IPluginFactory3Vtbl
 {
@@ -81,4 +81,4 @@ typedef struct Steinberg_IPluginFactory3
     struct Steinberg_IPluginFactory3Vtbl* lpVtbl;
 } Steinberg_IPluginFactory3;
 
-static Steinberg_TUID Steinberg_IPluginFactory3_iid = SMTG_INLINE_UID (0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
+static const Steinberg_TUID Steinberg_IPluginFactory3_iid = SMTG_INLINE_UID (0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
