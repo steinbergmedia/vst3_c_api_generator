@@ -277,7 +277,7 @@ def parse_enum(cursor: Cursor) -> bool:
     """parses and stores enum information"""
     if is_not_kind(cursor, 'ENUM_DECL'):
         return False
-    if not cursor.spelling:
+    if not cursor.spelling or cursor.spelling.startswith('(unnamed enum'):
         return True
     enum = Enum(convert_cursor(cursor), get_cursor_location(cursor.location))
     for cursor_child in cursor.get_children():
