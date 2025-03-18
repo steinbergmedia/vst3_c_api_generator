@@ -10,7 +10,7 @@ import re
 import unittest
 from pathlib import Path
 
-from interface_convert import create_translation_unit, parse_header, generate_conversion, normalise_link, clear_arrays
+from interface_convert import create_translation_unit, parse_header, generate_conversion, clear_arrays
 
 
 class TestConversion(unittest.TestCase):
@@ -22,7 +22,7 @@ class TestConversion(unittest.TestCase):
         header_path = (cls._get_headers_directory() / f'{header_name}.h').absolute()
         translation_unit = create_translation_unit(header_path, str(header_path.parents[2]))
         parse_header(translation_unit.cursor)
-        result = generate_conversion(normalise_link(translation_unit.spelling))
+        result = generate_conversion()
         translation_unit.reparse(unsaved_files=[(header_path, '')])
         return result
 
