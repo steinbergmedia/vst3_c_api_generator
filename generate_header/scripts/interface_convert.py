@@ -397,7 +397,8 @@ def create_namespace_prefix_for_type(cursor_type: Type) -> str:
     decl_cursor = cursor_type.get_declaration()
     namespaces = []
     while decl_cursor:
-        if is_kind(decl_cursor, 'NAMESPACE'):
+        if is_kind(decl_cursor, 'NAMESPACE') or (
+                is_kind(decl_cursor, 'CLASS_DECL') and decl_cursor.spelling != cursor_type.spelling):
             namespaces.append(decl_cursor.spelling)
         decl_cursor = decl_cursor.semantic_parent
     if not namespaces:

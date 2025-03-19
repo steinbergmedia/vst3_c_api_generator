@@ -82,3 +82,21 @@ typedef struct Steinberg_IPluginFactory3
 } Steinberg_IPluginFactory3;
 
 static const Steinberg_TUID Steinberg_IPluginFactory3_iid = SMTG_INLINE_UID (0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
+
+typedef struct Steinberg_IPlugViewContentScaleSupportVtbl
+{
+    /* methods derived from "Steinberg_FUnknown": */
+    Steinberg_tresult (SMTG_STDMETHODCALLTYPE* queryInterface) (void* thisInterface, const Steinberg_TUID iid, void** obj);
+    Steinberg_uint32 (SMTG_STDMETHODCALLTYPE* addRef) (void* thisInterface);
+
+    /* methods defined in "Steinberg_IPlugViewContentScaleSupport": */
+    Steinberg_tresult (SMTG_STDMETHODCALLTYPE* setContentScaleFactor) (void* thisInterface, Steinberg_IPlugViewContentScaleSupport_ScaleFactor factor);
+
+} Steinberg_IPlugViewContentScaleSupportVtbl;
+
+typedef struct Steinberg_IPlugViewContentScaleSupport
+{
+    struct Steinberg_IPlugViewContentScaleSupportVtbl* lpVtbl;
+} Steinberg_IPlugViewContentScaleSupport;
+
+static const Steinberg_TUID Steinberg_IPlugViewContentScaleSupport_iid = SMTG_INLINE_UID (0x65ED9690, 0x8AC44525, 0x8AADEF7A, 0x72EA703F);
