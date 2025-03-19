@@ -94,18 +94,18 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_AddRef (void* thisInterfa
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_AddRef_ConnectionPoint (void* thisInterface)
 {
-	return AGainProcessor_AddRef ((int64_t)thisInterface - pointerOffset);
+	return AGainProcessor_AddRef ((void*)((int64_t)thisInterface - pointerOffset));
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_AddRef_AudioProcessor (void* thisInterface)
 {
-	return AGainProcessor_AddRef ((int64_t)thisInterface - (pointerOffset * 2));
+	return AGainProcessor_AddRef ((void*)((int64_t)thisInterface - (pointerOffset * 2)));
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE
 AGainProcessor_AddRef_ProcessContextRequirements (void* thisInterface)
 {
-	return AGainProcessor_AddRef ((int64_t)thisInterface - (pointerOffset * 3));
+	return AGainProcessor_AddRef ((void*)((int64_t)thisInterface - (pointerOffset * 3)));
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_Release (void* thisInterface)
@@ -122,18 +122,18 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_Release (void* thisInterf
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_Release_ConnectionPoint (void* thisInterface)
 {
-	return AGainProcessor_Release ((int64_t)thisInterface - pointerOffset);
+	return AGainProcessor_Release ((void*)((int64_t)thisInterface - pointerOffset));
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainProcessor_Release_AudioProcessor (void* thisInterface)
 {
-	return AGainProcessor_Release ((int64_t)thisInterface - (pointerOffset * 2));
+	return AGainProcessor_Release ((void*)((int64_t)thisInterface - (pointerOffset * 2)));
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE
 AGainProcessor_Release_ProcessContextRequirements (void* thisInterface)
 {
-	return AGainProcessor_Release ((int64_t)thisInterface - (pointerOffset * 3));
+	return AGainProcessor_Release ((void*)((int64_t)thisInterface - (pointerOffset * 3)));
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface (void* thisInterface,
@@ -184,19 +184,22 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface (void* th
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface_ConnectionPoint (
     void* thisInterface, const Steinberg_TUID iid, void** obj)
 {
-	return AGainProcessor_QueryInterface ((int64_t)thisInterface - pointerOffset, iid, obj);
+	return AGainProcessor_QueryInterface ((void*)((int64_t)thisInterface - pointerOffset), iid,
+	                                      obj);
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface_AudioProcessor (
     void* thisInterface, const Steinberg_TUID iid, void** obj)
 {
-	return AGainProcessor_QueryInterface ((int64_t)thisInterface - (pointerOffset * 2), iid, obj);
+	return AGainProcessor_QueryInterface ((void*)((int64_t)thisInterface - (pointerOffset * 2)),
+	                                      iid, obj);
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainProcessor_QueryInterface_ProcessContextRequirements (
     void* thisInterface, const Steinberg_TUID iid, void** obj)
 {
-	return AGainProcessor_QueryInterface ((int64_t)thisInterface - (pointerOffset * 3), iid, obj);
+	return AGainProcessor_QueryInterface ((void*)((int64_t)thisInterface - (pointerOffset * 3)),
+	                                      iid, obj);
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE
@@ -447,12 +450,12 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_AddRef (void* thisInterf
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_AddRef_ConnectionPoint (void* thisInterface)
 {
-	return AGainController_AddRef ((int64_t)thisInterface - pointerOffset);
+	return AGainController_AddRef ((void*)((int64_t)thisInterface - pointerOffset));
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_AddRef_EditController2 (void* thisInterface)
 {
-	return AGainController_AddRef ((int64_t)thisInterface - (pointerOffset * 2));
+	return AGainController_AddRef ((void*)((int64_t)thisInterface - (pointerOffset * 2)));
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_Release (void* thisInterface)
@@ -470,13 +473,13 @@ Steinberg_uint32 SMTG_STDMETHODCALLTYPE AGainController_Release (void* thisInter
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE
 AGainController_Release_ConnectionPoint (void* thisInterface)
 {
-	return AGainController_Release ((int64_t)thisInterface - pointerOffset);
+	return AGainController_Release ((void*)((int64_t)thisInterface - pointerOffset));
 }
 
 Steinberg_uint32 SMTG_STDMETHODCALLTYPE
 AGainController_Release_EditController2 (void* thisInterface)
 {
-	return AGainController_Release ((int64_t)thisInterface - (pointerOffset * 2));
+	return AGainController_Release ((void*)((int64_t)thisInterface - (pointerOffset * 2)));
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface (void* thisInterface,
@@ -521,13 +524,15 @@ Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface (void* t
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface_ConnectionPoint (
     void* thisInterface, const Steinberg_TUID iid, void** obj)
 {
-	return AGainController_QueryInterface ((int64_t)thisInterface - pointerOffset, iid, obj);
+	return AGainController_QueryInterface ((void*)((int64_t)thisInterface - pointerOffset), iid,
+	                                       obj);
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE AGainController_QueryInterface_EditController2 (
     void* thisInterface, const Steinberg_TUID iid, void** obj)
 {
-	return AGainController_QueryInterface ((int64_t)thisInterface - (pointerOffset * 2), iid, obj);
+	return AGainController_QueryInterface ((void*)((int64_t)thisInterface - (pointerOffset * 2)),
+	                                       iid, obj);
 }
 
 Steinberg_tresult SMTG_STDMETHODCALLTYPE
