@@ -217,7 +217,9 @@ def parse_variables(cursor):
     if is_not_kind(cursor, 'VAR_DECL') or (
             is_not_kind(cursor.type, 'ELABORATED') and is_not_kind(cursor.type, 'TYPEDEF')):
         return
-    if cursor.displayname.endswith('iid'):
+    if is_kind(cursor.type, 'ELABORATED') and (cursor.displayname == 'iid' or
+                                               cursor.displayname.endswith('_iid') or is_kind(
+                cursor.type.get_canonical(), 'RECORD')):
         return
     variable_value = _visit_children(list(cursor.get_children())[-1])
     variables.append(Variable(convert_cursor(cursor), convert_type(cursor.type), variable_value))
