@@ -414,7 +414,8 @@ def _get_namespaces(cursor: Cursor) -> List[str]:
     namespaces = []
     while cursor and is_not_kind(cursor, 'TRANSLATION_UNIT'):
         if cursor.spelling:
-            namespaces.append(cursor.spelling)
+            if not (cursor.spelling.startswith('(unnamed ') or cursor.spelling.startswith('(anonymous ')):
+                namespaces.append(cursor.spelling)
         cursor = cursor.lexical_parent
     namespaces.reverse()
     return namespaces

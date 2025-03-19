@@ -18,6 +18,12 @@ struct PFactoryInfo
 	char8 email[kEmailSize];
 	int32 flags;
 	TUID cid;
+
+	union
+	{
+		NoteOnEvent noteOn;   ///< type == kNoteOnEvent
+		NoteOffEvent noteOff; ///< type == kNoteOffEvent
+	};
 };
 
 }

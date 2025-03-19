@@ -5,4 +5,9 @@ struct Steinberg_PFactoryInfo
     Steinberg_char8 email[256 << 4];
     Steinberg_int32 flags;
     Steinberg_TUID cid;
+    union
+    {
+        int Steinberg_PFactoryInfo_noteOn;
+        int Steinberg_PFactoryInfo_noteOff;
+    };
 };
