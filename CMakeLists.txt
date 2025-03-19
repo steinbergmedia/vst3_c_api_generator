@@ -70,7 +70,7 @@ endif()
 message(STATUS "Execute: ${venv_python_exe} -m pip install --upgrade pip")
 execute_process(COMMAND ${venv_python_exe} -m pip install --upgrade pip)
 
-foreach(library libclang==14.0.6 clang==14.0 jinja2==3.1.2)
+foreach(library libclang==18.1.* clang==18.1.* jinja2)
 	message(STATUS "Execute: ${venv_python_exe} -m pip install ${library}")
 	execute_process(COMMAND ${venv_python_exe} -m pip install ${library})
 endforeach()
