@@ -1,0 +1,9 @@
+[project]
+name = "c-api-generator"
+version = "0.0.0"
+requires-python = "==3.9.*"
+dependencies = [
+    "libclang",
+    "clang==18.1.*",
+    "jinja2"
+]

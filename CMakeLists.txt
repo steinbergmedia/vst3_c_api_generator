@@ -70,7 +70,7 @@ endif()
 message(STATUS "Execute: ${venv_python_exe} -m pip install --upgrade pip")
 execute_process(COMMAND ${venv_python_exe} -m pip install --upgrade pip)
 
-foreach(library libclang==14.0.6 clang==14.0 jinja2==3.1.2)
+foreach(library libclang==18.1.* clang==18.1.* jinja2)
 	message(STATUS "Execute: ${venv_python_exe} -m pip install ${library}")
 	execute_process(COMMAND ${venv_python_exe} -m pip install ${library})
 endforeach()
@@ -91,12 +91,16 @@ project(
 add_executable(Generate_Header generate_header/generate_header.c generate_header/scripts)
 target_include_directories(Generate_Header PRIVATE ${CMAKE_BINARY_DIR})
 
+if(APPLE)
+	set(sysroot_arg "-isysroot;${CMAKE_OSX_SYSROOT}")
+endif()
+
 add_custom_command(
 	TARGET Generate_Header
 	PRE_BUILD
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}
-	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
+	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h ${sysroot_arg}
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
 )

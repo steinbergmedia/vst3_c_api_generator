@@ -149,7 +149,10 @@ def parse_inheritance(cursor: Cursor, interface: Interface):
     """parses and stores information about interface inheritance"""
     if is_not_kind(cursor, 'CXX_BASE_SPECIFIER'):
         return
-    base_interface_name = convert_namespace(cursor.type.spelling)
+    base_interface_name = ''
+    if is_kind(cursor.type, 'ELABORATED'):
+        base_interface_name = create_namespace_prefix_for_type(cursor.type)
+    base_interface_name += convert_namespace(cursor.type.spelling)
     if base_interface_name in interfaces:
         interface.add_base_class(interfaces[base_interface_name])
 
@@ -191,12 +194,12 @@ def parse_methods(cursor: Cursor, interface: Interface):
 
 def _parse_method_arguments(cursor: Cursor) -> List[str]:
     """parses method arguments and returns formatted string"""
-    args = []
+    result = []
     for cursor_child in cursor.get_arguments():
         argument_type = create_struct_prefix(cursor_child.type) + convert_type(cursor_child.type)
         name = _convert_method_args_name(cursor_child.spelling)
-        args.append(f'{argument_type} {name}')
-    return args
+        result.append(f'{argument_type} {name}')
+    return result
 
 
 def _convert_method_args_name(source: str) -> str:
@@ -211,7 +214,12 @@ def _convert_method_args_name(source: str) -> str:
 # noinspection SpellCheckingInspection
 def parse_variables(cursor):
     """parses and stores variable definition information"""
-    if is_not_kind(cursor, 'VAR_DECL') or is_not_kind(cursor.type, 'TYPEDEF'):
+    if is_not_kind(cursor, 'VAR_DECL') or (
+            is_not_kind(cursor.type, 'ELABORATED') and is_not_kind(cursor.type, 'TYPEDEF')):
+        return
+    if is_kind(cursor.type, 'ELABORATED') and (cursor.displayname == 'iid' or
+                                               cursor.displayname.endswith('_iid') or is_kind(
+                cursor.type.get_canonical(), 'RECORD')):
         return
     variable_value = _visit_children(list(cursor.get_children())[-1])
     variables.append(Variable(convert_cursor(cursor), convert_type(cursor.type), variable_value))
@@ -271,7 +279,7 @@ def parse_enum(cursor: Cursor) -> bool:
     """parses and stores enum information"""
     if is_not_kind(cursor, 'ENUM_DECL'):
         return False
-    if not cursor.spelling:
+    if not cursor.spelling or cursor.spelling.startswith('(unnamed enum'):
         return True
     enum = Enum(convert_cursor(cursor), get_cursor_location(cursor.location))
     for cursor_child in cursor.get_children():
@@ -384,6 +392,18 @@ def create_namespace_prefix(cursor: Cursor) -> str:
         return ''
     return '_'.join(namespaces) + '_'
 
+def create_namespace_prefix_for_type(cursor_type: Type) -> str:
+    """gets namespace, formats  prefix and returns it as string"""
+    decl_cursor = cursor_type.get_declaration()
+    namespaces = []
+    while decl_cursor:
+        if is_kind(decl_cursor, 'NAMESPACE') or (
+                is_kind(decl_cursor, 'CLASS_DECL') and decl_cursor.spelling != cursor_type.spelling):
+            namespaces.append(decl_cursor.spelling)
+        decl_cursor = decl_cursor.semantic_parent
+    if not namespaces:
+        return ''
+    return '_'.join(reversed(namespaces)) + '_'
 
 def _get_namespaces(cursor: Cursor) -> List[str]:
     """finds cursor's namespace and returns it as string"""
@@ -394,7 +414,8 @@ def _get_namespaces(cursor: Cursor) -> List[str]:
     namespaces = []
     while cursor and is_not_kind(cursor, 'TRANSLATION_UNIT'):
         if cursor.spelling:
-            namespaces.append(cursor.spelling)
+            if not (cursor.spelling.startswith('(unnamed ') or cursor.spelling.startswith('(anonymous ')):
+                namespaces.append(cursor.spelling)
         cursor = cursor.lexical_parent
     namespaces.reverse()
     return namespaces
@@ -422,9 +443,15 @@ def convert_type(cursor_type: Type) -> str:
         cursor_type = pointee
         num_pointers += 1
         pointee = cursor_type.get_pointee()
-    result = convert_namespace(cursor_type.spelling)
+    result = ''
+    if is_kind(cursor_type, 'ELABORATED'):
+        result = create_namespace_prefix_for_type(cursor_type)
+    if cursor_type.is_const_qualified():
+        result = 'const ' + result + re.sub('\\s*const\\s*', '', convert_namespace(cursor_type.spelling))
+    else:
+        result += convert_namespace(cursor_type.spelling)
     if num_pointers:
-        result = convert_namespace(cursor_type.spelling) + '*' * num_pointers + ' const' * num_consts
+        result += '*' * num_pointers + ' const' * num_consts
     return result
 
 
@@ -434,7 +461,7 @@ def convert_type(cursor_type: Type) -> str:
 
 
 # noinspection SpellCheckingInspection
-def generate_standard(source_file: str):
+def generate_standard():
     """generates standard content for converted header, irrespective of parsed header file, returns string"""
     string =  "/*-----------------------------------------------------------------------------\n"
     string += " This file is part of a Steinberg SDK. It is subject to the license terms\n"
@@ -661,9 +688,9 @@ def generate_interface():
     return string
 
 
-def generate_conversion(source_file: str):
+def generate_conversion():
     """executes individual generator functions, returns finalised string"""
-    string = generate_standard(source_file)
+    string = generate_standard()
     string += generate_typedefs(typedefs, 'Typedefs')
     string += generate_forward()
     string += generate_return_types()
@@ -758,7 +785,7 @@ if __name__ == '__main__':
 
     """executes parsing and generator function"""
     parse_header(tu.cursor)
-    header_content = generate_conversion(normalise_link(tu.spelling))
+    header_content = generate_conversion()
 
     """outputs generated header as new header file"""
     if write_header:

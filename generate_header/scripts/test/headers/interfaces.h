@@ -35,4 +35,15 @@ class IPluginFactory3 : public IPluginFactory2
 
 DECLARE_CLASS_IID (IPluginFactory3, 0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931)
 
+class IPlugViewContentScaleSupport : public FUnknown
+{
+	typedef float ScaleFactor;
+
+	virtual tresult PLUGIN_API setContentScaleFactor (ScaleFactor factor /*in*/) = 0;
+
+	static const FUID iid;
+};
+
+DECLARE_CLASS_IID (IPlugViewContentScaleSupport, 0x65ED9690, 0x8AC44525, 0x8AADEF7A, 0x72EA703F)
+
 }

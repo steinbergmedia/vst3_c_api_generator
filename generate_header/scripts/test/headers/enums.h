@@ -8,6 +8,13 @@ class IBStream
 		kIBSeekCur,
 		kIBSeekEnd
 	};
+
+	enum
+	{
+		kURLSize = 256,
+		kEmailSize = 128,
+		kNameSize = 64
+	};
 };
 
 namespace Vst {
