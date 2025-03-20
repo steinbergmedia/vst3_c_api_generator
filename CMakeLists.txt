@@ -92,9 +92,7 @@ add_executable(Generate_Header generate_header/generate_header.c generate_header
 target_include_directories(Generate_Header PRIVATE ${CMAKE_BINARY_DIR})
 
 if(APPLE)
-	# Get the SDK path
-	execute_process(COMMAND xcrun --show-sdk-path OUTPUT_VARIABLE sdk_path OUTPUT_STRIP_TRAILING_WHITESPACE)
-	set(sdk_path "-isysroot;${sdk_path}")
+	set(sysroot_arg "-isysroot;${CMAKE_OSX_SYSROOT}")
 endif()
 
 add_custom_command(
@@ -102,7 +100,7 @@ add_custom_command(
 	PRE_BUILD
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}
-	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h ${sdk_path}
+	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h ${sysroot_arg}
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
 )
