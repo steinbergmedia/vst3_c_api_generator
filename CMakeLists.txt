@@ -92,17 +92,23 @@ add_executable(Generate_Header generate_header/generate_header.c generate_header
 target_include_directories(Generate_Header PRIVATE ${CMAKE_BINARY_DIR})
 
 if(APPLE)
-	set(sysroot_arg "-isysroot;${CMAKE_OSX_SYSROOT}")
+    execute_process(OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE CMAKE_OSX_SYSROOT COMMAND /usr/bin/xcrun --show-sdk-path)
+    set(sysroot_arg "-isysroot;${CMAKE_OSX_SYSROOT}")
 endif()
 
 add_custom_command(
-	TARGET Generate_Header
-	PRE_BUILD
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}
-	COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h ${sysroot_arg}
-	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
+    TARGET Generate_Header
+    PRE_BUILD
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E echo "${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}"
+    COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/generate_header_compilation.py ${pluginterfaces_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E echo "${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h '${sysroot_arg}'"
+    COMMAND ${venv_python_exe} ${CMAKE_CURRENT_SOURCE_DIR}/generate_header/scripts/interface_convert.py ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h ${sysroot_arg}
+)
+add_custom_command(
+    TARGET Generate_Header
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/_deps/pluginterfaces/vst/header_compilation.h
 )
 
 ###############################################################################################
