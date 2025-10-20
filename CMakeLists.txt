@@ -13,16 +13,16 @@ set(SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT HEAD)
 ###############################################################################################
 
 set(SMTG_PLUGINTERFACES_REPO_TYPE
-	${SMTG_PLUGINTERFACES_REPO_TYPE_DEFAULT}
-	CACHE STRING "The VST3 pluginterfaces (API) repository type (git or file)"
+    ${SMTG_PLUGINTERFACES_REPO_TYPE_DEFAULT}
+    CACHE STRING "The VST3 pluginterfaces (API) repository type (git or file)"
 )
 set(SMTG_PLUGINTERFACES_REPO
-	${SMTG_PLUGINTERFACES_REPO_DEFAULT}
-	CACHE STRING "The VST3 pluginterfaces (API) repository"
+    ${SMTG_PLUGINTERFACES_REPO_DEFAULT}
+    CACHE STRING "The VST3 pluginterfaces (API) repository"
 )
 set(SMTG_PLUGINTERFACES_GIT_TAG
-	${SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT}
-	CACHE STRING "The VST3 pluginterfaces (API) git tag"
+    ${SMTG_PLUGINTERFACES_GIT_TAG_DEFAULT}
+    CACHE STRING "The VST3 pluginterfaces (API) git tag"
 )
 
 ###############################################################################################
@@ -30,27 +30,27 @@ set(SMTG_PLUGINTERFACES_GIT_TAG
 ###############################################################################################
 
 if(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL git)
-	include(FetchContent)
+    include(FetchContent)
 
-	FetchContent_Declare(
-		pluginterfaces
-		GIT_REPOSITORY		${SMTG_PLUGINTERFACES_REPO}
-		GIT_TAG				${SMTG_PLUGINTERFACES_GIT_TAG}
-		GIT_SHALLOW			TRUE
-		GIT_PROGRESS		TRUE
-		SOURCE_DIR			"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
-	)
-	message(STATUS "Git clone pluginterfaces")
-	FetchContent_Populate(pluginterfaces)
-	message(STATUS "Git clone pluginterfaces done.")
+    FetchContent_Declare(
+        pluginterfaces
+        GIT_REPOSITORY      ${SMTG_PLUGINTERFACES_REPO}
+        GIT_TAG             ${SMTG_PLUGINTERFACES_GIT_TAG}
+        GIT_SHALLOW         TRUE
+        GIT_PROGRESS        TRUE
+        SOURCE_DIR          "${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
+    )
+    message(STATUS "Git clone pluginterfaces")
+    FetchContent_Populate(pluginterfaces)
+    message(STATUS "Git clone pluginterfaces done.")
 
 elseif(${SMTG_PLUGINTERFACES_REPO_TYPE} STREQUAL file)
-	execute_process(COMMAND /bin/rm -rf "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
-	execute_process(COMMAND /bin/mkdir -p "${CMAKE_BINARY_DIR}/_deps")
-	execute_process(COMMAND /bin/cp -R ${SMTG_PLUGINTERFACES_REPO} "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
-	set(pluginterfaces_SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/pluginterfaces)
+    execute_process(COMMAND /bin/rm -rf "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
+    execute_process(COMMAND /bin/mkdir -p "${CMAKE_BINARY_DIR}/_deps")
+    execute_process(COMMAND /bin/cp -R ${SMTG_PLUGINTERFACES_REPO} "${CMAKE_BINARY_DIR}/_deps/pluginterfaces")
+    set(pluginterfaces_SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/pluginterfaces)
 else()
-	message(FATAL_ERROR "Wrong repo type")
+    message(FATAL_ERROR "Wrong repo type")
 endif()
 
 ###############################################################################################
@@ -62,17 +62,17 @@ set(venv_dir ${CMAKE_BINARY_DIR}/venv)
 message(STATUS "Execute: ${Python3_EXECUTABLE} -m venv ${venv_dir}")
 execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${venv_dir})
 if(APPLE)
-	set(venv_python_exe ${venv_dir}/bin/python)
+    set(venv_python_exe ${venv_dir}/bin/python)
 elseif(WIN32)
-	set(venv_python_exe ${venv_dir}/Scripts/python.exe)
+    set(venv_python_exe ${venv_dir}/Scripts/python.exe)
 endif()
 
 message(STATUS "Execute: ${venv_python_exe} -m pip install --upgrade pip")
 execute_process(COMMAND ${venv_python_exe} -m pip install --upgrade pip)
 
 foreach(library libclang==18.1.* clang==18.1.* jinja2)
-	message(STATUS "Execute: ${venv_python_exe} -m pip install ${library}")
-	execute_process(COMMAND ${venv_python_exe} -m pip install ${library})
+    message(STATUS "Execute: ${venv_python_exe} -m pip install ${library}")
+    execute_process(COMMAND ${venv_python_exe} -m pip install ${library})
 endforeach()
 
 ###############################################################################################
@@ -80,8 +80,8 @@ endforeach()
 ###############################################################################################
 
 project(
-	VST3_C_API_GENERATOR
-	VERSION 1.0.0
+    VST3_C_API_GENERATOR
+    VERSION 1.0.0
 )
 
 ###############################################################################################
@@ -115,11 +115,11 @@ add_custom_command(
 ## Validate Interface Target
 ###############################################################################################
 
-add_executable(Validate_Interfaces 
-	validate_interfaces/main.c
-	validate_interfaces/test2.c
-	validate_interfaces/cxx.cpp
-	"${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
+add_executable(Validate_Interfaces
+    validate_interfaces/main.c
+    validate_interfaces/test2.c
+    validate_interfaces/cxx.cpp
+    "${CMAKE_BINARY_DIR}/_deps/pluginterfaces"
 )
 target_include_directories(Validate_Interfaces PRIVATE "${CMAKE_BINARY_DIR}" "${pluginterfaces_SOURCE_DIR}/..")
 target_compile_features(Validate_Interfaces
@@ -136,12 +136,12 @@ add_library(C_Gain_Test MODULE c_gain_test_plugin/cgain.c)
 target_include_directories(C_Gain_Test PRIVATE ${CMAKE_BINARY_DIR})
 
 if(APPLE)
-	set_target_properties(C_Gain_Test
-		PROPERTIES
-			BUNDLE TRUE
-			XCODE_ATTRIBUTE_GENERATE_PKGINFO_FILE YES
-			XCODE_ATTRIBUTE_WRAPPER_EXTENSION vst3
-	)
+    set_target_properties(C_Gain_Test
+        PROPERTIES
+            BUNDLE TRUE
+            XCODE_ATTRIBUTE_GENERATE_PKGINFO_FILE YES
+            XCODE_ATTRIBUTE_WRAPPER_EXTENSION vst3
+    )
 else()
     set_target_properties(C_Gain_Test
         PROPERTIES
