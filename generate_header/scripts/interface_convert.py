@@ -196,7 +196,7 @@ def _parse_method_arguments(cursor: Cursor) -> List[str]:
     """parses method arguments and returns formatted string"""
     result = []
     for cursor_child in cursor.get_arguments():
-        argument_type = create_struct_prefix(cursor_child.type) + convert_type(cursor_child.type)
+        argument_type = convert_arg_type(cursor_child.type)
         name = _convert_method_args_name(cursor_child.spelling)
         result.append(f'{argument_type} {name}')
     return result
@@ -446,6 +446,34 @@ def convert_type(cursor_type: Type) -> str:
     result = ''
     if is_kind(cursor_type, 'ELABORATED'):
         result = create_namespace_prefix_for_type(cursor_type)
+    if cursor_type.is_const_qualified():
+        result = 'const ' + result + re.sub('\\s*const\\s*', '', convert_namespace(cursor_type.spelling))
+    else:
+        result += convert_namespace(cursor_type.spelling)
+    if num_pointers:
+        result += '*' * num_pointers + ' const' * num_consts
+    return result
+
+# noinspection SpellCheckingInspection
+def convert_arg_type(cursor_type: Type) -> str:
+    """checks for pointers/const/struct and attaches respective prefix or suffix to returned type string"""
+    struct_type = create_struct_prefix(cursor_type)
+    num_pointers = 0
+    num_consts = 0
+    pointee = cursor_type.get_pointee()
+    while is_valid(pointee):
+        if cursor_type.is_const_qualified():
+            num_consts += 1
+        if is_kind(cursor_type, 'RVALUEREFERENCE'):
+            num_pointers += 1
+        cursor_type = pointee
+        num_pointers += 1
+        pointee = cursor_type.get_pointee()
+    result = ''
+    if is_kind(cursor_type, 'ELABORATED'):
+        result = create_namespace_prefix_for_type(cursor_type)
+    if struct_type:
+        result = struct_type + result
     if cursor_type.is_const_qualified():
         result = 'const ' + result + re.sub('\\s*const\\s*', '', convert_namespace(cursor_type.spelling))
     else:
